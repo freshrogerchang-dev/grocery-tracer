@@ -1,0 +1,28 @@
+# 追蹤清單設定
+#
+# items 底下每一筆可以是「網址追蹤」或「關鍵字搜尋」：
+#
+# 網址追蹤（最準確）：
+#   - site: iherb | momo | coupang
+#     url: 商品頁網址
+#     target_price: 100        # 選填，價格 <= 這個數字才通知；不填則「有折扣就通知」
+#
+# 關鍵字搜尋（涵蓋面廣，較不精準）：
+#   - site: iherb | momo | coupang
+#     keyword: 搜尋關鍵字
+#     target_discount_pct: 20  # 選填，折扣百分比 >= 這個數字才通知；預設 10
+#
+# 下面先放兩筆範例，請換成你自己要追蹤的商品後再啟用排程。
+
+notify_on_any_discount: true
+
+items:
+  - site: iherb
+    url: https://tw.iherb.com/pr/now-foods-pure-buffered-vitamin-c-ascorbate-powder-8-oz-227-g/676
+
+  - site: momo
+    url: https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=13217153
+
+  - site: coupang
+    keyword: "無線滑鼠"
+    target_discount_pct: 20
