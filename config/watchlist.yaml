@@ -17,9 +17,5 @@
 notify_on_any_discount: true
 
 items:
-  - site: coupang
-    keyword: "無線滑鼠"
-    target_discount_pct: 20
-
   - site: iherb
     url: https://iherb.co/cWt7YSm?utm_medium=appshare
