@@ -204,12 +204,13 @@ async function loadStateEntries(env) {
 }
 
 function formatPriceEntry(item, entry) {
+  const currency = entry.currency || "";
   const lines = [`💰 <b>${(entry && entry.name) || item.url}</b>`, `網站：${item.site}`];
   if (entry.last_original_price && entry.last_original_price > entry.last_price) {
     const pct = Math.round((1 - entry.last_price / entry.last_original_price) * 100);
-    lines.push(`價格：${entry.last_price}（原價 ${entry.last_original_price}，折 ${pct}%）`);
+    lines.push(`價格：${currency} ${entry.last_price}（原價 ${currency} ${entry.last_original_price}，折 ${pct}%）`);
   } else {
-    lines.push(`價格：${entry.last_price}`);
+    lines.push(`價格：${currency} ${entry.last_price}`);
   }
   if (entry.last_seen_at) lines.push(`上次檢查：${entry.last_seen_at}`);
   lines.push(item.url);

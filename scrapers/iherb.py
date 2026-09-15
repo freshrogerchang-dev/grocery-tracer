@@ -31,6 +31,13 @@ from . import DEFAULT_USER_AGENT, ProductInfo, ScrapeError, now_utc, retry
 SITE = "iherb"
 SEARCH_URL = "https://tw.iherb.com/search?kw={kw}"
 
+# iHerb's own product-id URLs ignore the slug text (only the trailing number
+# matters), so once we know the id we can force the Taiwan/TWD storefront
+# directly instead of trusting whatever region a redirect or IP-geolocation
+# lookup picked - GitHub Actions runners have US IPs, so without this,
+# iHerb happily serves the .com/USD experience even for a tw.iherb.com link.
+PRODUCT_ID_RE = re.compile(r"/pr/[^/]+/(\d+)")
+
 
 def _new_page(browser):
     context = browser.new_context(user_agent=DEFAULT_USER_AGENT, locale="zh-TW")
@@ -44,6 +51,13 @@ def _get_soup(url: str) -> BeautifulSoup:
         context, page = _new_page(browser)
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=30000)
+
+            if "tw.iherb.com" not in page.url:
+                match = PRODUCT_ID_RE.search(page.url)
+                if match:
+                    tw_url = f"https://tw.iherb.com/pr/x/{match.group(1)}"
+                    page.goto(tw_url, wait_until="domcontentloaded", timeout=30000)
+
             # script tags are never "visible", so wait for them to be attached instead
             page.wait_for_selector('script[type="application/ld+json"]', timeout=15000, state="attached")
             html = page.content()

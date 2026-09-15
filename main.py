@@ -184,6 +184,7 @@ def run(dry_run: bool = False) -> None:
             new_entry = {
                 "name": product.name,
                 "url": product.url,
+                "currency": product.currency,
                 "last_price": product.current_price,
                 "last_original_price": product.original_price,
                 "last_seen_at": now_iso,
