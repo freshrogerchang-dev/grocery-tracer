@@ -60,6 +60,18 @@ def _get_soup(url: str) -> BeautifulSoup:
 
             # script tags are never "visible", so wait for them to be attached instead
             page.wait_for_selector('script[type="application/ld+json"]', timeout=15000, state="attached")
+
+            # The pricing widget starts in a default "no discount" state and
+            # only flips to a strike-through/discount state after an async
+            # JS call (promo/coupon eligibility) resolves - domcontentloaded
+            # fires well before that, so we'd otherwise always see "no
+            # discount" even when one is actually active. Give it a moment.
+            try:
+                page.wait_for_load_state("networkidle", timeout=15000)
+            except Exception:
+                pass  # best effort - proceed with whatever state we have
+            page.wait_for_timeout(1000)
+
             html = page.content()
         finally:
             context.close()
@@ -85,42 +97,62 @@ def _parse_price_text(text: str) -> float | None:
     return float(match.group(0).replace(",", ""))
 
 
-def _find_active_price_panel(soup: BeautifulSoup):
-    """Return the one pricing panel iHerb currently shows (class ends with
-    '-config' and also has a 'show' class), or None if the structure changed.
+# iHerb sometimes renders the pricing widget TWICE on the same page (looks
+# like a desktop/mobile duplicate), and the two copies' 'show' flags can
+# disagree - one showing an active discount, the other showing none. When
+# that happens we prefer whichever result actually indicates a promotion,
+# since silently missing a real discount is worse than a harmless recheck.
+PANEL_PRIORITY = [
+    "strike-through-config",
+    "save-in-cart-config",
+    "original-price-config",
+    "see-price-in-cart-config",
+]
+
+
+def _find_active_price_panels(soup: BeautifulSoup) -> list[tuple[str, object]]:
+    """Return every pricing panel iHerb currently shows (class ends with
+    '-config' and also has a 'show' class) as (panel_kind, element) pairs.
     """
+    panels = []
     for el in soup.find_all(class_=True):
         classes = el.get("class", [])
         if "show" in classes and any(c.endswith("-config") for c in classes):
-            return el, classes
-    return None, []
+            panel_kind = next(c for c in classes if c.endswith("-config"))
+            panels.append((panel_kind, el))
+    return panels
 
 
 def _current_and_original_price(soup: BeautifulSoup, list_price: float) -> tuple[float, float | None]:
-    panel, classes = _find_active_price_panel(soup)
-    if panel is None:
+    panels = _find_active_price_panels(soup)
+    if not panels:
         return list_price, None
 
-    panel_kind = next((c for c in classes if c.endswith("-config")), "")
+    for preferred_kind in PANEL_PRIORITY:
+        panel = next((el for kind, el in panels if kind == preferred_kind), None)
+        if panel is None:
+            continue
 
-    if panel_kind.startswith("strike-through"):
-        discount_el = panel.find(class_="discount-price")
-        list_el = panel.find(class_="list-price")
-        current = _parse_price_text(discount_el.get_text()) if discount_el else None
-        original = _parse_price_text(list_el.get_text()) if list_el else list_price
-        if current is not None:
-            return current, original or list_price
+        if preferred_kind == "strike-through-config":
+            discount_el = panel.find(class_="discount-price")
+            list_el = panel.find(class_="list-price")
+            current = _parse_price_text(discount_el.get_text()) if discount_el else None
+            original = _parse_price_text(list_el.get_text()) if list_el else list_price
+            if current is not None:
+                return current, original or list_price
+            return list_price, None
+
+        if preferred_kind == "save-in-cart-config":
+            pct_match = re.search(r"(\d+)\s*%", panel.get_text())
+            if pct_match:
+                pct = float(pct_match.group(1))
+                return round(list_price * (1 - pct / 100), 2), list_price
+            return list_price, None
+
+        # "original-price-config" (no discount) or "see-price-in-cart-config"
+        # (price hidden until added to cart) - neither gives us a real discount.
         return list_price, None
 
-    if panel_kind.startswith("save-in-cart"):
-        pct_match = re.search(r"(\d+)\s*%", panel.get_text())
-        if pct_match:
-            pct = float(pct_match.group(1))
-            return round(list_price * (1 - pct / 100), 2), list_price
-        return list_price, None
-
-    # "original-price-config" (no discount) or "see-price-in-cart-config"
-    # (price hidden until added to cart) - neither gives us a real discount.
     return list_price, None
 
 
