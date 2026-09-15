@@ -37,7 +37,9 @@ const HELP_TEXT = [
   "可用指令：",
   "/list — 列出目前追蹤清單",
   "/price <編號> — 查看該商品上次排程檢查到的價格（不是即時的，是排程爬蟲最近一次、最長 6 小時內抓到的資料）",
+  "/price all — 一次列出所有商品的價格",
   "/remove <編號 或 網址/關鍵字片段> — 取消追蹤該筆",
+  "/remove all confirm — 取消追蹤全部（等同 /reset confirm）",
   "/reset confirm — 清空整個追蹤清單",
   "/help — 顯示這則說明",
   "",
@@ -185,8 +187,8 @@ function handleList(items) {
   const lines = ["📋 目前追蹤清單："];
   items.forEach((item, i) => lines.push(describeItem(i + 1, item)));
   lines.push("\n要取消追蹤，傳 /remove 加編號，例如：/remove 2");
-  lines.push("要查價格，傳 /price 加編號，例如：/price 1");
-  lines.push("要清空全部，傳 /reset confirm");
+  lines.push("要查價格，傳 /price 加編號，例如：/price 1（或 /price all 查全部）");
+  lines.push("要清空全部，傳 /reset confirm（或 /remove all confirm）");
   return lines.join("\n");
 }
 
@@ -206,15 +208,21 @@ async function loadStateEntries(env) {
 const IHERB_COUPON_REMINDER =
   "💡 這是公開售價，沒有套用個人優惠碼。iHerb 常有首購折扣碼（例如 NEW20），登入你的帳號查看頁面上是否有適用的優惠碼，可能比這裡顯示的價格更低。";
 
-function formatPriceEntry(item, entry) {
+function formatPriceText(entry) {
   const currency = entry.currency || "";
-  const lines = [`💰 <b>${(entry && entry.name) || item.url}</b>`, `網站：${item.site}`];
   if (entry.last_original_price && entry.last_original_price > entry.last_price) {
     const pct = Math.round((1 - entry.last_price / entry.last_original_price) * 100);
-    lines.push(`價格：${currency} ${entry.last_price}（原價 ${currency} ${entry.last_original_price}，折 ${pct}%）`);
-  } else {
-    lines.push(`價格：${currency} ${entry.last_price}`);
+    return `${currency} ${entry.last_price}（原價 ${currency} ${entry.last_original_price}，折 ${pct}%）`;
   }
+  return `${currency} ${entry.last_price}`;
+}
+
+function formatPriceEntry(item, entry) {
+  const lines = [
+    `💰 <b>${(entry && entry.name) || item.url}</b>`,
+    `網站：${item.site}`,
+    `價格：${formatPriceText(entry)}`,
+  ];
   if (entry.last_seen_at) lines.push(`上次檢查：${entry.last_seen_at}`);
   lines.push(item.url);
   if (item.site === "iherb") lines.push(IHERB_COUPON_REMINDER);
@@ -226,8 +234,11 @@ async function handlePrice(env, items, arg) {
   if (items.length === 0) {
     return "目前沒有追蹤任何商品。";
   }
+  if (arg.toLowerCase() === "all") {
+    return handlePriceAll(env, items);
+  }
   if (!/^\d+$/.test(arg)) {
-    return "請指定要查詢的編號，例如：/price 1\n先傳 /list 查看編號。";
+    return "請指定要查詢的編號，例如：/price 1（或 /price all 查全部）\n先傳 /list 查看編號。";
   }
   const n = parseInt(arg, 10);
   if (n < 1 || n > items.length) {
@@ -245,8 +256,44 @@ async function handlePrice(env, items, arg) {
   return formatPriceEntry(item, entry);
 }
 
+async function handlePriceAll(env, items) {
+  const entries = await loadStateEntries(env);
+  const lines = ["📊 目前所有商品價格："];
+  let hasIherb = false;
+
+  items.forEach((item, i) => {
+    const idx = i + 1;
+    if (!item.url) {
+      lines.push(`${idx}. [${item.site}] 關鍵字「${item.keyword}」— 沒有單一價格`);
+      return;
+    }
+    if (item.site === "iherb") hasIherb = true;
+    const entry = entries.find((e) => e.url === item.url);
+    if (!entry) {
+      lines.push(`${idx}. [${item.site}] ${item.url} — 還沒有資料`);
+      return;
+    }
+    lines.push(`${idx}. [${item.site}] ${entry.name || item.url}：${formatPriceText(entry)}`);
+  });
+
+  if (hasIherb) lines.push("\n" + IHERB_COUPON_REMINDER);
+  return lines.join("\n");
+}
+
 function errorReplyText(err) {
   return `❌ 儲存到 GitHub 失敗，稍後再試。\n錯誤訊息：${String((err && err.message) || err).slice(0, 300)}`;
+}
+
+async function performReset(env, header, items, sha) {
+  if (items.length === 0) {
+    return "目前清單本來就是空的。";
+  }
+  try {
+    await githubPutFile(env, WATCHLIST_PATH, serializeWatchlist(header, []), sha, "chore: clear watchlist via Telegram bot");
+    return `🧹 已清空追蹤清單（原本有 ${items.length} 筆）。`;
+  } catch (err) {
+    return errorReplyText(err);
+  }
 }
 
 function handleRemove(items, arg) {
@@ -334,21 +381,23 @@ async function handleUpdate(env, update) {
       await sendTelegramMessage(env, "⚠️ 這會清空整個追蹤清單，確定的話傳：/reset confirm");
       return;
     }
-    if (items.length === 0) {
-      await sendTelegramMessage(env, "目前清單本來就是空的。");
-      return;
-    }
-    try {
-      await githubPutFile(env, WATCHLIST_PATH, serializeWatchlist(header, []), sha, "chore: reset watchlist via Telegram bot");
-      await sendTelegramMessage(env, `🧹 已清空追蹤清單（原本有 ${items.length} 筆）。`);
-    } catch (err) {
-      await sendTelegramMessage(env, errorReplyText(err));
-    }
+    await sendTelegramMessage(env, await performReset(env, header, items, sha));
     return;
   }
 
   if (cmd === "/remove") {
-    const result = handleRemove(items, rest.join(" "));
+    const argText = rest.join(" ").trim();
+
+    if (argText.toLowerCase() === "all" || argText.toLowerCase() === "all confirm") {
+      if (argText.toLowerCase() !== "all confirm") {
+        await sendTelegramMessage(env, "⚠️ 這會取消追蹤全部商品，確定的話傳：/remove all confirm");
+        return;
+      }
+      await sendTelegramMessage(env, await performReset(env, header, items, sha));
+      return;
+    }
+
+    const result = handleRemove(items, argText);
     if (!result.changed) {
       await sendTelegramMessage(env, result.reply);
       return;
@@ -399,7 +448,9 @@ export {
   handleRemove,
   handleAddUrl,
   handlePrice,
+  handlePriceAll,
   formatPriceEntry,
+  performReset,
   handleUpdate,
 };
 
