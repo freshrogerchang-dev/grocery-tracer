@@ -2,7 +2,6 @@ name: Discount Monitor
 
 on:
   schedule:
-    # 每 6 小時跑一次（UTC 時間 0,6,12,18 點，即台灣時間 8,14,20,2 點）
     - cron: "0 */6 * * *"
   workflow_dispatch: {}
 
@@ -30,7 +29,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
 
-         - name: Commit updated price history / watchlist
+      - name: Commit updated price history / watchlist
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
