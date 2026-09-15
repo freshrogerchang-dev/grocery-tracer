@@ -31,6 +31,18 @@ const SITE_DOMAINS = {
 
 const URL_RE = /https?:\/\/\S+/g;
 const WATCHLIST_PATH = "config/watchlist.yaml";
+const STATE_PATH = "data/state.json";
+
+const HELP_TEXT = [
+  "可用指令：",
+  "/list — 列出目前追蹤清單",
+  "/price <編號> — 查看該商品上次排程檢查到的價格（不是即時的，是排程爬蟲最近一次、最長 6 小時內抓到的資料）",
+  "/remove <編號 或 網址/關鍵字片段> — 取消追蹤該筆",
+  "/reset confirm — 清空整個追蹤清單",
+  "/help — 顯示這則說明",
+  "",
+  "直接貼商品連結（iHerb / momo / Coupang）就會自動加入追蹤。",
+].join("\n");
 
 function detectSite(url) {
   for (const [domain, site] of Object.entries(SITE_DOMAINS)) {
@@ -173,8 +185,59 @@ function handleList(items) {
   const lines = ["📋 目前追蹤清單："];
   items.forEach((item, i) => lines.push(describeItem(i + 1, item)));
   lines.push("\n要取消追蹤，傳 /remove 加編號，例如：/remove 2");
+  lines.push("要查價格，傳 /price 加編號，例如：/price 1");
   lines.push("要清空全部，傳 /reset confirm");
   return lines.join("\n");
+}
+
+async function loadStateEntries(env) {
+  try {
+    const { text } = await githubGetFile(env, STATE_PATH);
+    const data = JSON.parse(text);
+    return Object.entries(data)
+      .filter(([key]) => !key.startsWith("failtrack:"))
+      .map(([, value]) => value);
+  } catch (err) {
+    console.error("loadStateEntries failed:", err);
+    return [];
+  }
+}
+
+function formatPriceEntry(item, entry) {
+  const lines = [`💰 <b>${(entry && entry.name) || item.url}</b>`, `網站：${item.site}`];
+  if (entry.last_original_price && entry.last_original_price > entry.last_price) {
+    const pct = Math.round((1 - entry.last_price / entry.last_original_price) * 100);
+    lines.push(`價格：${entry.last_price}（原價 ${entry.last_original_price}，折 ${pct}%）`);
+  } else {
+    lines.push(`價格：${entry.last_price}`);
+  }
+  if (entry.last_seen_at) lines.push(`上次檢查：${entry.last_seen_at}`);
+  lines.push(item.url);
+  return lines.join("\n");
+}
+
+async function handlePrice(env, items, arg) {
+  arg = (arg || "").trim();
+  if (items.length === 0) {
+    return "目前沒有追蹤任何商品。";
+  }
+  if (!/^\d+$/.test(arg)) {
+    return "請指定要查詢的編號，例如：/price 1\n先傳 /list 查看編號。";
+  }
+  const n = parseInt(arg, 10);
+  if (n < 1 || n > items.length) {
+    return `編號 ${n} 不存在，目前清單有 1~${items.length} 筆，先傳 /list 確認。`;
+  }
+  const item = items[n - 1];
+  if (!item.url) {
+    return `[${item.site}] 關鍵字「${item.keyword}」是關鍵字搜尋型追蹤，沒有單一價格可查，用 /list 看目前設定。`;
+  }
+  const entries = await loadStateEntries(env);
+  const entry = entries.find((e) => e.url === item.url);
+  if (!entry) {
+    return `還沒有這個商品的價格資料，可能還沒排程檢查過、或抓取一直失敗：\n${item.url}`;
+  }
+  return formatPriceEntry(item, entry);
 }
 
 function errorReplyText(err) {
@@ -243,11 +306,21 @@ async function handleUpdate(env, update) {
   const [command, ...rest] = text.split(" ");
   const cmd = command.split("@")[0].toLowerCase();
 
+  if (cmd === "/help" || cmd === "/start") {
+    await sendTelegramMessage(env, HELP_TEXT);
+    return;
+  }
+
   const { text: watchlistText, sha } = await githubGetFile(env, WATCHLIST_PATH);
   const { header, items } = parseWatchlist(watchlistText);
 
   if (cmd === "/list") {
     await sendTelegramMessage(env, handleList(items));
+    return;
+  }
+
+  if (cmd === "/price") {
+    await sendTelegramMessage(env, await handlePrice(env, items, rest.join(" ")));
     return;
   }
 
@@ -313,7 +386,17 @@ async function handleUpdate(env, update) {
 // Named exports (in addition to the default fetch handler below) exist
 // purely so the pure logic functions can be unit tested with plain Node,
 // without needing the Workers runtime.
-export { detectSite, parseWatchlist, serializeWatchlist, handleList, handleRemove, handleAddUrl, handleUpdate };
+export {
+  detectSite,
+  parseWatchlist,
+  serializeWatchlist,
+  handleList,
+  handleRemove,
+  handleAddUrl,
+  handlePrice,
+  formatPriceEntry,
+  handleUpdate,
+};
 
 export default {
   async fetch(request, env) {

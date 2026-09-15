@@ -27,6 +27,8 @@ WATCHLIST_PATH = ROOT / "config" / "watchlist.yaml"
 STATE_PATH = ROOT / "data" / "state.json"
 
 RENOTIFY_COOLDOWN = timedelta(days=7)
+FAILURE_NOTIFY_THRESHOLD = 3
+FAILURE_RENOTIFY_COOLDOWN = timedelta(days=3)
 
 SCRAPERS = {}
 
@@ -126,6 +128,16 @@ def format_notification(product: ProductInfo) -> str:
     return "\n".join(lines)
 
 
+def failure_key(item: dict) -> str:
+    identity = item.get("url") or item.get("keyword") or "?"
+    return f"failtrack:{item.get('site')}:{identity}"
+
+
+def format_failure_notice(item: dict, count: int) -> str:
+    target = item.get("url") or f"關鍵字「{item.get('keyword')}」"
+    return f"⚠️ [{item.get('site')}] 已連續 {count} 次抓取失敗：\n{target}"
+
+
 def run(dry_run: bool = False) -> None:
     # Telegram commands (/list, /remove, adding a link) are handled instantly
     # by the Cloudflare Worker webhook (see cloudflare-worker/worker.js), not
@@ -137,10 +149,29 @@ def run(dry_run: bool = False) -> None:
     global_cfg = {k: v for k, v in watchlist.items() if k != "items"}
 
     notifications: list[str] = []
+    failure_notices: list[str] = []
     now_iso = datetime.now(timezone.utc).isoformat()
 
     for item in items:
         products = collect_products(item)
+        fkey = failure_key(item)
+        fail_entry = state.get(fkey, {})
+
+        if not products:
+            count = fail_entry.get("count", 0) + 1
+            last_notified_at = fail_entry.get("last_notified_at")
+            cooled_down = (
+                last_notified_at is None
+                or datetime.now(timezone.utc) - datetime.fromisoformat(last_notified_at) >= FAILURE_RENOTIFY_COOLDOWN
+            )
+            if count >= FAILURE_NOTIFY_THRESHOLD and cooled_down:
+                failure_notices.append(format_failure_notice(item, count))
+                fail_entry["last_notified_at"] = now_iso
+            fail_entry["count"] = count
+            state[fkey] = fail_entry
+        elif fail_entry:
+            state[fkey] = {"count": 0, "last_notified_at": None}
+
         for product in products:
             key = f"{product.site}:{product.product_id}"
             state_entry = state.get(key)
@@ -151,6 +182,8 @@ def run(dry_run: bool = False) -> None:
                 logger.info("discount found: %s -> %s %s", product.name, product.currency, product.current_price)
 
             new_entry = {
+                "name": product.name,
+                "url": product.url,
                 "last_price": product.current_price,
                 "last_original_price": product.original_price,
                 "last_seen_at": now_iso,
@@ -170,6 +203,14 @@ def run(dry_run: bool = False) -> None:
         message = f"發現 {len(notifications)} 個折扣商品：\n\n" + "\n\n".join(notifications)
         send_message(message)
         logger.info("sent Telegram notification with %d discount(s)", len(notifications))
+
+    if failure_notices:
+        message = "以下商品抓取持續失敗，可能是網站擋爬蟲或頁面改版：\n\n" + "\n\n".join(failure_notices)
+        if dry_run:
+            logger.info("--dry-run: would send failure alert:\n\n%s", message)
+        else:
+            send_message(message)
+            logger.info("sent failure alert for %d item(s)", len(failure_notices))
 
     if not dry_run:
         save_state(state)
