@@ -17,9 +17,6 @@
 notify_on_any_discount: true
 
 items:
-  - site: iherb
-    url: https://tw.iherb.com/pr/now-foods-pure-buffered-vitamin-c-ascorbate-powder-8-oz-227-g/676
-
   - site: momo
     url: https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=13217153
 
