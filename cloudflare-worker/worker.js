@@ -41,6 +41,8 @@ const HELP_TEXT = [
   "/search <關鍵字> — 到 iHerb / momo / Coupang 搜尋商品，約 1-2 分鐘後回覆結果（不是即時的，會觸發 GitHub Actions 執行）",
   "/price <編號> — 查看該商品上次排程檢查到的價格（不是即時的，是排程爬蟲最近一次、最長 6 小時內抓到的資料），有 2 筆以上歷史價格會附上走勢圖網址",
   "/price all — 一次列出所有商品的價格",
+  "/setprice <編號> <價格> — 設定價格門檻，價格<=這個數字才通知（傳 off 取消）",
+  "/setdiscount <編號> <百分比> — 設定折扣門檻，折扣>=這個百分比才通知（傳 off 取消）",
   "/remove <編號 或 網址/關鍵字片段> — 取消追蹤該筆",
   "/remove all confirm — 取消追蹤全部（等同 /reset confirm）",
   "/reset confirm — 清空整個追蹤清單",
@@ -195,20 +197,27 @@ async function sendTelegramMessage(env, text) {
 
 // --- command handlers -------------------------------------------------
 
-function describeItem(index, item) {
+function describeItem(index, item, entries) {
   const conditions = [];
   if (item.target_price !== undefined) conditions.push(`價格<=${item.target_price}`);
   if (item.target_discount_pct !== undefined) conditions.push(`折扣>=${item.target_discount_pct}%`);
   const suffix = conditions.length ? `（${conditions.join(", ")}）` : "";
-  if (item.url) return `${index}. [${item.site}] ${item.url}${suffix}`;
+  if (item.url) {
+    const entry = entries && entries.find((e) => e.url === item.url);
+    const name = entry && entry.name;
+    return name
+      ? `${index}. [${item.site}] ${name}${suffix}\n    ${item.url}`
+      : `${index}. [${item.site}] ${item.url}${suffix}`;
+  }
   if (item.keyword) return `${index}. [${item.site}] 關鍵字「${item.keyword}」${suffix}`;
   return `${index}. [${item.site}] (無法辨識的設定)`;
 }
 
-function handleList(items) {
+async function handleList(env, items) {
   if (items.length === 0) return "目前沒有追蹤任何商品。";
+  const entries = await loadStateEntries(env);
   const lines = ["📋 目前追蹤清單："];
-  items.forEach((item, i) => lines.push(describeItem(i + 1, item)));
+  items.forEach((item, i) => lines.push(describeItem(i + 1, item, entries)));
   lines.push("\n要取消追蹤，傳 /remove 加編號，例如：/remove 2");
   lines.push("要查價格，傳 /price 加編號，例如：/price 1（或 /price all 查全部）");
   lines.push("要清空全部，傳 /reset confirm（或 /remove all confirm）");
@@ -240,12 +249,19 @@ function formatPriceText(entry) {
   return `${currency} ${entry.last_price}`;
 }
 
+function isAllTimeLow(entry) {
+  if (!entry.history || entry.history.length < 2) return false;
+  const minPrice = Math.min(...entry.history.map((h) => h.price));
+  return entry.last_price <= minPrice;
+}
+
 function formatPriceEntry(item, entry, baseUrl, index) {
   const lines = [
     `💰 <b>${(entry && entry.name) || item.url}</b>`,
     `網站：${item.site}`,
     `價格：${formatPriceText(entry)}`,
   ];
+  if (isAllTimeLow(entry)) lines.push("🏆 這是目前記錄到的最低價！");
   if (entry.last_seen_at) lines.push(`上次檢查：${entry.last_seen_at}`);
   lines.push(item.url);
   if (baseUrl && index != null && entry.history && entry.history.length > 1) {
@@ -299,7 +315,8 @@ async function handlePriceAll(env, items, baseUrl) {
       lines.push(`${idx}. [${item.site}] ${item.url} — 還沒有資料`);
       return;
     }
-    lines.push(`${idx}. [${item.site}] ${entry.name || item.url}：${formatPriceText(entry)}`);
+    const lowBadge = isAllTimeLow(entry) ? " 🏆最低" : "";
+    lines.push(`${idx}. [${item.site}] ${entry.name || item.url}：${formatPriceText(entry)}${lowBadge}`);
   });
 
   if (baseUrl) lines.push("\n要看個別商品的價格走勢圖，傳 /price 加編號，例如：/price 1");
@@ -321,6 +338,66 @@ async function performReset(env, header, items, sha) {
   } catch (err) {
     return errorReplyText(err);
   }
+}
+
+function handleSetTarget(items, argText, { field, exampleCmd, exampleValue, describeValue }) {
+  const parts = (argText || "").trim().split(/\s+/).filter(Boolean);
+  const [numStr, valueStr] = parts;
+  if (!numStr || !valueStr) {
+    return {
+      reply: `用法：${exampleCmd} 編號 ${exampleValue}（或傳 off 取消門檻），例如：${exampleCmd} 1 ${exampleValue}\n先傳 /list 查看編號。`,
+      items,
+      changed: false,
+    };
+  }
+  if (!/^\d+$/.test(numStr)) {
+    return { reply: `編號要是數字，例如：${exampleCmd} 1 ${exampleValue}`, items, changed: false };
+  }
+  const n = parseInt(numStr, 10);
+  if (n < 1 || n > items.length) {
+    return { reply: `編號 ${n} 不存在，目前清單有 1~${items.length} 筆，先傳 /list 確認。`, items, changed: false };
+  }
+
+  const item = items[n - 1];
+  const desc = item.url || `關鍵字「${item.keyword}」`;
+  const updated = { ...item };
+  let reply;
+
+  if (valueStr.toLowerCase() === "off") {
+    delete updated.target_price;
+    delete updated.target_discount_pct;
+    reply = `✅ 已取消第 ${n} 筆的門檻設定：\n${desc}`;
+  } else {
+    if (!/^\d+(\.\d+)?$/.test(valueStr)) {
+      return { reply: `數值格式錯誤：${valueStr}`, items, changed: false };
+    }
+    delete updated.target_price;
+    delete updated.target_discount_pct;
+    updated[field] = valueStr;
+    reply = `✅ 第 ${n} 筆已設定：${describeValue(valueStr)}\n${desc}`;
+  }
+
+  const newItems = items.slice();
+  newItems[n - 1] = updated;
+  return { reply, items: newItems, changed: true };
+}
+
+function handleSetPrice(items, argText) {
+  return handleSetTarget(items, argText, {
+    field: "target_price",
+    exampleCmd: "/setprice",
+    exampleValue: "500",
+    describeValue: (v) => `價格 <= ${v} 才通知`,
+  });
+}
+
+function handleSetDiscount(items, argText) {
+  return handleSetTarget(items, argText, {
+    field: "target_discount_pct",
+    exampleCmd: "/setdiscount",
+    exampleValue: "20",
+    describeValue: (v) => `折扣 >= ${v}% 才通知`,
+  });
 }
 
 function handleRemove(items, arg) {
@@ -412,12 +489,27 @@ async function handleUpdate(env, update, baseUrl) {
   const { header, items } = parseWatchlist(watchlistText);
 
   if (cmd === "/list") {
-    await sendTelegramMessage(env, handleList(items));
+    await sendTelegramMessage(env, await handleList(env, items));
     return;
   }
 
   if (cmd === "/price") {
     await sendTelegramMessage(env, await handlePrice(env, items, rest.join(" "), baseUrl));
+    return;
+  }
+
+  if (cmd === "/setprice" || cmd === "/setdiscount") {
+    const result = cmd === "/setprice" ? handleSetPrice(items, rest.join(" ")) : handleSetDiscount(items, rest.join(" "));
+    if (!result.changed) {
+      await sendTelegramMessage(env, result.reply);
+      return;
+    }
+    try {
+      await githubPutFile(env, WATCHLIST_PATH, serializeWatchlist(header, result.items), sha, "chore: update notify threshold via Telegram bot");
+      await sendTelegramMessage(env, result.reply);
+    } catch (err) {
+      await sendTelegramMessage(env, errorReplyText(err));
+    }
     return;
   }
 
@@ -602,9 +694,12 @@ export {
   handleList,
   handleRemove,
   handleAddUrl,
+  handleSetPrice,
+  handleSetDiscount,
   handlePrice,
   handlePriceAll,
   formatPriceEntry,
+  isAllTimeLow,
   performReset,
   handleUpdate,
   renderChartSVG,

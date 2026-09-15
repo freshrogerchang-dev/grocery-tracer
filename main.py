@@ -122,7 +122,7 @@ IHERB_COUPON_REMINDER = (
 )
 
 
-def format_notification(product: ProductInfo) -> str:
+def format_notification(product: ProductInfo, is_all_time_low: bool = False) -> str:
     lines = [f"🔻 <b>{product.name}</b>", f"網站：{product.site}"]
     if product.original_price and product.original_price > product.current_price:
         lines.append(
@@ -131,6 +131,8 @@ def format_notification(product: ProductInfo) -> str:
         )
     else:
         lines.append(f"價格：{product.currency} {product.current_price:,.0f}")
+    if is_all_time_low:
+        lines.append("🏆 這是目前記錄到的最低價！")
     lines.append(product.url)
     if product.site == "iherb":
         lines.append(IHERB_COUPON_REMINDER)
@@ -145,6 +147,48 @@ def failure_key(item: dict) -> str:
 def format_failure_notice(item: dict, count: int) -> str:
     target = item.get("url") or f"關鍵字「{item.get('keyword')}」"
     return f"⚠️ [{item.get('site')}] 已連續 {count} 次抓取失敗：\n{target}"
+
+
+WEEKLY_DIGEST_WEEKDAY = 0  # Monday (datetime.weekday(): Monday == 0)
+WEEKLY_DIGEST_STATE_KEY = "_weekly_digest"
+WEEKLY_DIGEST_MIN_GAP = timedelta(days=6)  # guards against multiple runs landing on the same Monday
+
+
+def maybe_send_weekly_digest(state: dict, item_count: int, dry_run: bool) -> None:
+    now = datetime.now(timezone.utc)
+    if now.weekday() != WEEKLY_DIGEST_WEEKDAY:
+        return
+
+    digest_state = state.get(WEEKLY_DIGEST_STATE_KEY, {})
+    last_sent_at = digest_state.get("last_sent_at")
+    if last_sent_at and now - datetime.fromisoformat(last_sent_at) < WEEKLY_DIGEST_MIN_GAP:
+        return
+
+    discounted = [
+        entry
+        for key, entry in state.items()
+        if not key.startswith("failtrack:")
+        and key != WEEKLY_DIGEST_STATE_KEY
+        and entry.get("last_original_price")
+        and entry["last_original_price"] > entry.get("last_price", 0)
+    ]
+
+    lines = [f"📅 每週摘要：目前追蹤 {item_count} 個商品。"]
+    if discounted:
+        lines.append(f"目前有 {len(discounted)} 個商品正在打折：")
+        for entry in discounted[:10]:
+            lines.append(f"• {entry.get('name', entry.get('url'))} — {entry.get('currency', '')} {entry.get('last_price')}")
+    else:
+        lines.append("目前沒有商品在打折，會持續監控中。")
+    message = "\n".join(lines)
+
+    if dry_run:
+        logger.info("--dry-run: would send weekly digest:\n\n%s", message)
+        return
+
+    send_message(message)
+    state[WEEKLY_DIGEST_STATE_KEY] = {"last_sent_at": now.isoformat()}
+    logger.info("sent weekly digest")
 
 
 def run(dry_run: bool = False) -> None:
@@ -185,11 +229,6 @@ def run(dry_run: bool = False) -> None:
             key = f"{product.site}:{product.product_id}"
             state_entry = state.get(key)
 
-            notify = should_notify(product, item, global_cfg, state_entry)
-            if notify:
-                notifications.append(format_notification(product))
-                logger.info("discount found: %s -> %s %s", product.name, product.currency, product.current_price)
-
             history = list(state_entry.get("history", [])) if state_entry else []
             last_point = history[-1] if history else None
             if (
@@ -205,6 +244,13 @@ def run(dry_run: bool = False) -> None:
                     }
                 )
                 history = history[-MAX_HISTORY_ENTRIES:]
+
+            is_all_time_low = len(history) > 1 and product.current_price <= min(h["price"] for h in history)
+
+            notify = should_notify(product, item, global_cfg, state_entry)
+            if notify:
+                notifications.append(format_notification(product, is_all_time_low))
+                logger.info("discount found: %s -> %s %s", product.name, product.currency, product.current_price)
 
             new_entry = {
                 "name": product.name,
@@ -238,6 +284,8 @@ def run(dry_run: bool = False) -> None:
         else:
             send_message(message)
             logger.info("sent failure alert for %d item(s)", len(failure_notices))
+
+    maybe_send_weekly_digest(state, len(items), dry_run)
 
     if not dry_run:
         save_state(state)
