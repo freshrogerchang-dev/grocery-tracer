@@ -29,6 +29,7 @@ STATE_PATH = ROOT / "data" / "state.json"
 RENOTIFY_COOLDOWN = timedelta(days=7)
 FAILURE_NOTIFY_THRESHOLD = 3
 FAILURE_RENOTIFY_COOLDOWN = timedelta(days=3)
+MAX_HISTORY_ENTRIES = 200
 
 SCRAPERS = {}
 
@@ -189,6 +190,22 @@ def run(dry_run: bool = False) -> None:
                 notifications.append(format_notification(product))
                 logger.info("discount found: %s -> %s %s", product.name, product.currency, product.current_price)
 
+            history = list(state_entry.get("history", [])) if state_entry else []
+            last_point = history[-1] if history else None
+            if (
+                last_point is None
+                or last_point["price"] != product.current_price
+                or last_point.get("original_price") != product.original_price
+            ):
+                history.append(
+                    {
+                        "date": now_iso,
+                        "price": product.current_price,
+                        "original_price": product.original_price,
+                    }
+                )
+                history = history[-MAX_HISTORY_ENTRIES:]
+
             new_entry = {
                 "name": product.name,
                 "url": product.url,
@@ -198,6 +215,7 @@ def run(dry_run: bool = False) -> None:
                 "last_seen_at": now_iso,
                 "last_notified_price": state_entry.get("last_notified_price") if state_entry else None,
                 "last_notified_at": state_entry.get("last_notified_at") if state_entry else None,
+                "history": history,
             }
             if notify:
                 new_entry["last_notified_price"] = product.current_price

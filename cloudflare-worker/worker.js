@@ -36,7 +36,7 @@ const STATE_PATH = "data/state.json";
 const HELP_TEXT = [
   "可用指令：",
   "/list — 列出目前追蹤清單",
-  "/price <編號> — 查看該商品上次排程檢查到的價格（不是即時的，是排程爬蟲最近一次、最長 6 小時內抓到的資料）",
+  "/price <編號> — 查看該商品上次排程檢查到的價格（不是即時的，是排程爬蟲最近一次、最長 6 小時內抓到的資料），有 2 筆以上歷史價格會附上走勢圖網址",
   "/price all — 一次列出所有商品的價格",
   "/remove <編號 或 網址/關鍵字片段> — 取消追蹤該筆",
   "/remove all confirm — 取消追蹤全部（等同 /reset confirm）",
@@ -217,7 +217,7 @@ function formatPriceText(entry) {
   return `${currency} ${entry.last_price}`;
 }
 
-function formatPriceEntry(item, entry) {
+function formatPriceEntry(item, entry, baseUrl, index) {
   const lines = [
     `💰 <b>${(entry && entry.name) || item.url}</b>`,
     `網站：${item.site}`,
@@ -225,17 +225,20 @@ function formatPriceEntry(item, entry) {
   ];
   if (entry.last_seen_at) lines.push(`上次檢查：${entry.last_seen_at}`);
   lines.push(item.url);
+  if (baseUrl && index != null && entry.history && entry.history.length > 1) {
+    lines.push(`📈 價格走勢：${baseUrl}/chart?item=${index}`);
+  }
   if (item.site === "iherb") lines.push(IHERB_COUPON_REMINDER);
   return lines.join("\n");
 }
 
-async function handlePrice(env, items, arg) {
+async function handlePrice(env, items, arg, baseUrl) {
   arg = (arg || "").trim();
   if (items.length === 0) {
     return "目前沒有追蹤任何商品。";
   }
   if (arg.toLowerCase() === "all") {
-    return handlePriceAll(env, items);
+    return handlePriceAll(env, items, baseUrl);
   }
   if (!/^\d+$/.test(arg)) {
     return "請指定要查詢的編號，例如：/price 1（或 /price all 查全部）\n先傳 /list 查看編號。";
@@ -253,10 +256,10 @@ async function handlePrice(env, items, arg) {
   if (!entry) {
     return `還沒有這個商品的價格資料，可能還沒排程檢查過、或抓取一直失敗：\n${item.url}`;
   }
-  return formatPriceEntry(item, entry);
+  return formatPriceEntry(item, entry, baseUrl, n);
 }
 
-async function handlePriceAll(env, items) {
+async function handlePriceAll(env, items, baseUrl) {
   const entries = await loadStateEntries(env);
   const lines = ["📊 目前所有商品價格："];
   let hasIherb = false;
@@ -276,7 +279,8 @@ async function handlePriceAll(env, items) {
     lines.push(`${idx}. [${item.site}] ${entry.name || item.url}：${formatPriceText(entry)}`);
   });
 
-  if (hasIherb) lines.push("\n" + IHERB_COUPON_REMINDER);
+  if (baseUrl) lines.push("\n要看個別商品的價格走勢圖，傳 /price 加編號，例如：/price 1");
+  if (hasIherb) lines.push(IHERB_COUPON_REMINDER);
   return lines.join("\n");
 }
 
@@ -346,7 +350,7 @@ function handleAddUrl(items, rawUrl) {
 
 // --- request handling ---------------------------------------------------
 
-async function handleUpdate(env, update) {
+async function handleUpdate(env, update, baseUrl) {
   const message = update.message;
   const text = (message && message.text ? message.text : "").trim();
   if (!text) return;
@@ -372,7 +376,7 @@ async function handleUpdate(env, update) {
   }
 
   if (cmd === "/price") {
-    await sendTelegramMessage(env, await handlePrice(env, items, rest.join(" ")));
+    await sendTelegramMessage(env, await handlePrice(env, items, rest.join(" "), baseUrl));
     return;
   }
 
@@ -437,6 +441,116 @@ async function handleUpdate(env, update) {
   }
 }
 
+// --- price history chart (served as a plain GET page) -------------------
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function renderChartSVG(history) {
+  const width = 700;
+  const height = 320;
+  const padding = { top: 20, right: 20, bottom: 30, left: 70 };
+  const plotW = width - padding.left - padding.right;
+  const plotH = height - padding.top - padding.bottom;
+
+  const times = history.map((h) => new Date(h.date).getTime());
+  const minT = Math.min(...times);
+  const maxT = Math.max(...times);
+  const prices = history.map((h) => h.price);
+  const minP = Math.min(...prices);
+  const maxP = Math.max(...prices);
+  const padP = Math.max((maxP - minP) * 0.15, maxP * 0.02, 1);
+  const yMin = Math.max(0, minP - padP);
+  const yMax = maxP + padP;
+
+  const x = (t) => padding.left + (maxT === minT ? plotW / 2 : ((t - minT) / (maxT - minT)) * plotW);
+  const y = (p) => padding.top + plotH - ((p - yMin) / (yMax - yMin)) * plotH;
+
+  const points = history.map((h) => `${x(new Date(h.date).getTime()).toFixed(1)},${y(h.price).toFixed(1)}`).join(" ");
+
+  const dots = history
+    .map((h) => {
+      const cx = x(new Date(h.date).getTime()).toFixed(1);
+      const cy = y(h.price).toFixed(1);
+      const discounted = h.original_price && h.original_price > h.price;
+      const label = escapeHtml(`${h.date.slice(0, 10)}: ${h.price}${discounted ? ` (原價 ${h.original_price})` : ""}`);
+      return `<circle cx="${cx}" cy="${cy}" r="4" fill="${discounted ? "#e11d48" : "#2563eb"}"><title>${label}</title></circle>`;
+    })
+    .join("");
+
+  const yTicks = [yMin, (yMin + yMax) / 2, yMax];
+  const yLabels = yTicks
+    .map((v) => `<text x="${padding.left - 10}" y="${y(v).toFixed(1)}" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#666">${Math.round(v)}</text>`)
+    .join("");
+  const gridLines = yTicks
+    .map((v) => `<line x1="${padding.left}" y1="${y(v).toFixed(1)}" x2="${width - padding.right}" y2="${y(v).toFixed(1)}" stroke="#eee"/>`)
+    .join("");
+
+  const firstDate = escapeHtml(history[0].date.slice(0, 10));
+  const lastDate = escapeHtml(history[history.length - 1].date.slice(0, 10));
+
+  return `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:system-ui,sans-serif;">
+    ${gridLines}
+    ${yLabels}
+    <polyline points="${points}" fill="none" stroke="#2563eb" stroke-width="2"/>
+    ${dots}
+    <text x="${padding.left}" y="${height - 8}" font-size="12" fill="#666">${firstDate}</text>
+    <text x="${width - padding.right}" y="${height - 8}" text-anchor="end" font-size="12" fill="#666">${lastDate}</text>
+  </svg>`;
+}
+
+function renderChartPage(item, entry) {
+  const history = (entry && entry.history) || [];
+  const title = escapeHtml((entry && entry.name) || item.url);
+  const body =
+    history.length < 2
+      ? `<p>這個商品目前還沒有足夠的歷史資料可以畫圖（至少要 2 個不同的價格點）。</p>`
+      : renderChartSVG(history);
+
+  return `<!doctype html>
+<html lang="zh-Hant"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title} - 價格走勢</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 24px auto; padding: 0 16px; color: #222; }
+  h1 { font-size: 1.2rem; }
+  .legend { color: #666; font-size: 0.85rem; margin-top: 8px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+</style>
+</head><body>
+<h1>${title}</h1>
+<p>網站：${escapeHtml(item.site)} ｜ <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">商品連結</a></p>
+${body}
+<p class="legend"><span class="dot" style="background:#2563eb"></span>一般價格　<span class="dot" style="background:#e11d48"></span>有折扣時</p>
+</body></html>`;
+}
+
+async function handleChartRequest(env, url) {
+  const idxParam = url.searchParams.get("item");
+  const n = parseInt(idxParam, 10);
+  if (!idxParam || Number.isNaN(n)) {
+    return new Response("缺少或錯誤的 item 參數，網址格式：/chart?item=1", { status: 400 });
+  }
+
+  const { text: watchlistText } = await githubGetFile(env, WATCHLIST_PATH);
+  const { items } = parseWatchlist(watchlistText);
+  if (n < 1 || n > items.length) {
+    return new Response(`編號 ${n} 不存在，目前清單有 1~${items.length} 筆。`, { status: 404 });
+  }
+  const item = items[n - 1];
+  if (!item.url) {
+    return new Response("這是關鍵字搜尋型追蹤，沒有單一商品的價格走勢可畫。", { status: 400 });
+  }
+
+  const entries = await loadStateEntries(env);
+  const entry = entries.find((e) => e.url === item.url);
+
+  return new Response(renderChartPage(item, entry || {}), {
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+}
+
 // Named exports (in addition to the default fetch handler below) exist
 // purely so the pure logic functions can be unit tested with plain Node,
 // without needing the Workers runtime.
@@ -452,10 +566,24 @@ export {
   formatPriceEntry,
   performReset,
   handleUpdate,
+  renderChartSVG,
+  renderChartPage,
+  handleChartRequest,
 };
 
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/chart") {
+      try {
+        return await handleChartRequest(env, url);
+      } catch (err) {
+        console.error(err);
+        return new Response("讀取價格資料失敗，稍後再試。", { status: 500 });
+      }
+    }
+
     if (request.method !== "POST") {
       return new Response("OK");
     }
@@ -473,7 +601,7 @@ export default {
     }
 
     try {
-      await handleUpdate(env, update);
+      await handleUpdate(env, update, url.origin);
     } catch (err) {
       console.error(err);
       // Still return 200 so Telegram doesn't retry-storm us over a bug.
