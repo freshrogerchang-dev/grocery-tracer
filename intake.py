@@ -1,11 +1,13 @@
-"""Turn incoming Telegram messages into watchlist entries.
+"""Turn incoming Telegram messages into watchlist changes.
 
 Since this project runs on a GitHub Actions cron schedule rather than a
 long-lived server, there's no webhook - each scheduled run polls Telegram's
-``getUpdates`` for messages sent since the last run, pulls out any
-iHerb/momo/Coupang product links, appends them to ``config/watchlist.yaml``,
-and replies in Telegram confirming what was added. A newly-added product
-gets checked for discounts in the same run.
+``getUpdates`` for messages sent since the last run and handles three kinds
+of input:
+
+- A product link (iHerb/momo/Coupang) -> added to config/watchlist.yaml.
+- ``/list`` -> replies with the current numbered watchlist.
+- ``/remove <number or url/keyword substring>`` -> removes that entry.
 
 The offset of the last processed Telegram update is kept in
 ``data/telegram_offset.json`` so restarts don't reprocess old messages.
@@ -58,23 +60,114 @@ def _save_offset(offset: int) -> None:
         json.dump({"offset": offset}, f)
 
 
-def _existing_urls() -> set[str]:
+def _load_items() -> list[dict]:
     if not WATCHLIST_PATH.exists():
-        return set()
+        return []
     with open(WATCHLIST_PATH, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
-    return {item["url"] for item in data.get("items", []) if "url" in item}
+    return data.get("items", []) or []
+
+
+def _existing_urls() -> set[str]:
+    return {item["url"] for item in _load_items() if "url" in item}
+
+
+def _format_item_block(item: dict) -> str:
+    lines = [f"  - site: {item['site']}"]
+    if item.get("url"):
+        lines.append(f"    url: {item['url']}")
+    if item.get("keyword"):
+        lines.append(f'    keyword: "{item["keyword"]}"')
+    if item.get("target_price") is not None:
+        lines.append(f"    target_price: {item['target_price']}")
+    if item.get("target_discount_pct") is not None:
+        lines.append(f"    target_discount_pct: {item['target_discount_pct']}")
+    return "\n".join(lines)
 
 
 def _append_to_watchlist(site: str, url: str) -> None:
     # Appended as plain text (rather than re-serialized via yaml.safe_dump)
     # so the hand-written comments at the top of watchlist.yaml survive.
     with open(WATCHLIST_PATH, "a", encoding="utf-8") as f:
-        f.write(f"\n  - site: {site}\n    url: {url}\n")
+        f.write("\n" + _format_item_block({"site": site, "url": url}) + "\n")
+
+
+def _write_items(items: list[dict]) -> None:
+    """Rewrite the ``items:`` section in place, keeping the header comments
+    (everything up to and including the ``items:`` line) untouched."""
+    text = WATCHLIST_PATH.read_text(encoding="utf-8")
+    marker = "items:"
+    idx = text.index(marker)
+    header = text[: idx + len(marker)]
+
+    if items:
+        body = "\n\n".join(_format_item_block(item) for item in items)
+        new_text = f"{header}\n{body}\n"
+    else:
+        new_text = f"{header}\n"
+
+    WATCHLIST_PATH.write_text(new_text, encoding="utf-8")
+
+
+def _describe_item(index: int, item: dict) -> str:
+    site = item.get("site", "?")
+    conditions = []
+    if item.get("target_price") is not None:
+        conditions.append(f"價格<={item['target_price']}")
+    if item.get("target_discount_pct") is not None:
+        conditions.append(f"折扣>={item['target_discount_pct']}%")
+    suffix = f"（{', '.join(conditions)}）" if conditions else ""
+
+    if item.get("url"):
+        return f"{index}. [{site}] {item['url']}{suffix}"
+    if item.get("keyword"):
+        return f"{index}. [{site}] 關鍵字「{item['keyword']}」{suffix}"
+    return f"{index}. [{site}] (無法辨識的設定)"
+
+
+def _handle_list() -> str:
+    items = _load_items()
+    if not items:
+        return "目前沒有追蹤任何商品。"
+    lines = ["📋 目前追蹤清單："]
+    lines.extend(_describe_item(i, item) for i, item in enumerate(items, start=1))
+    lines.append("\n要取消追蹤，傳 /remove 加編號，例如：/remove 2")
+    return "\n".join(lines)
+
+
+def _handle_remove(arg: str) -> str:
+    arg = arg.strip()
+    if not arg:
+        return "請指定要取消的編號或網址關鍵字，例如：/remove 2\n先傳 /list 查看目前的編號。"
+
+    items = _load_items()
+    if not items:
+        return "目前沒有追蹤任何商品可以取消。"
+
+    if arg.isdigit():
+        n = int(arg)
+        if not (1 <= n <= len(items)):
+            return f"編號 {n} 不存在，目前清單有 1~{len(items)} 筆，先傳 /list 確認。"
+        target_index = n - 1
+    else:
+        matches = [
+            i for i, item in enumerate(items)
+            if arg in (item.get("url") or "") or arg in (item.get("keyword") or "")
+        ]
+        if not matches:
+            return f"找不到符合「{arg}」的項目，先傳 /list 確認清單。"
+        if len(matches) > 1:
+            return f"「{arg}」符合超過一筆，請改傳編號取消（先傳 /list 查看編號）。"
+        target_index = matches[0]
+
+    removed = items.pop(target_index)
+    _write_items(items)
+    desc = removed.get("url") or removed.get("keyword") or "?"
+    return f"🗑 已取消追蹤：\n{desc}"
 
 
 def sync_from_telegram() -> None:
-    """Poll Telegram for new messages and add any product links found."""
+    """Poll Telegram for new messages and act on links / commands found."""
     offset = _load_offset()
     try:
         updates = get_updates(offset=(offset + 1) if offset is not None else None)
@@ -90,8 +183,19 @@ def sync_from_telegram() -> None:
 
     for update in updates:
         highest_update_id = max(highest_update_id, update.get("update_id", 0))
-        text = (update.get("message") or {}).get("text", "")
+        text = (update.get("message") or {}).get("text", "").strip()
         if not text:
+            continue
+
+        command, _, rest = text.partition(" ")
+        command = command.split("@")[0].lower()
+
+        if command == "/list":
+            send_message(_handle_list())
+            continue
+
+        if command == "/remove":
+            send_message(_handle_remove(rest))
             continue
 
         for url in URL_RE.findall(text):

@@ -30,7 +30,12 @@
 
 直接把商品頁網址貼給你的 Telegram 機器人，它下次執行時會自動判斷是 iHerb / momo / Coupang，加進 `config/watchlist.yaml` 並回覆確認訊息（已經追蹤過的會提示重複、看不出網站的會提示略過）。因為是跟著排程一起檢查，最久要等到下一次排程（預設 6 小時內）才會處理，也可以到 Actions 頁籤手動按 `Run workflow` 立即處理。
 
-這種方式目前只能「新增」，用 `target_price` / `target_discount_pct` 設門檻或要「移除」商品還是要編輯 `config/watchlist.yaml`。
+機器人也支援兩個指令：
+
+- `/list` — 列出目前追蹤清單，附編號
+- `/remove <編號>` — 取消追蹤該筆（先傳 `/list` 看編號）。也可以用 `/remove <網址或關鍵字的一部分>`，例如 `/remove momoshop`，符合超過一筆時會請你改用編號
+
+用 `target_price` / `target_discount_pct` 設價格門檻，目前還是要編輯 `config/watchlist.yaml`。
 
 **B. 直接編輯 `config/watchlist.yaml`**
 
