@@ -32,6 +32,7 @@ URL_RE = re.compile(r"https?://\S+")
 
 SITE_DOMAINS = {
     "iherb.com": "iherb",
+    "iherb.co": "iherb",  # short link domain used by iHerb's app "share" button
     "momoshop.com.tw": "momo",
     "coupang.com": "coupang",
 }
