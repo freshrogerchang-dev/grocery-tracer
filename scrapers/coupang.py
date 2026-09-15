@@ -1,17 +1,19 @@
-"""Coupang (tw.coupang.com) scraper - BEST EFFORT, UNVERIFIED.
+"""Coupang (tw.coupang.com) scraper - blocked by Coupang's bot protection.
 
-Coupang runs aggressive bot detection; this module's browser tooling itself
-was refused access to tw.coupang.com when this project was built ("not
-allowed due to safety restrictions"), so the selectors below were written
-from general e-commerce conventions (JSON-LD / Open Graph price meta tags),
-NOT confirmed against a live page. Expect this scraper to need adjustment -
-run ``python main.py --dry-run`` locally first and inspect what it returns
-(or fails with) before relying on it.
+Confirmed (2026-09-16): Coupang's Akamai WAF returns a flat "Access Denied"
+page before any product content loads, for both product pages and search
+result pages, from this project's scraping environment. This is a
+bot-detection block at the CDN/WAF level, not a parsing bug - no amount of
+adjusting CSS selectors can fix it; it would need something like residential
+proxies or a managed browser-fingerprinting service, which is out of scope
+for this project.
 
-If Coupang keeps failing from GitHub Actions' shared IPs (likely, given how
-aggressively it blocks datacenter traffic), remove its entries from
-``config/watchlist.yaml`` and keep using iHerb + momo, which are more
-scraper-friendly.
+search() and fetch_product() still try (selectors are best-effort, based on
+general e-commerce conventions, never confirmed against real unblocked
+content) and _raise_if_blocked() detects the "Access Denied" page specifically
+so failures show up as a clear, distinct error rather than a vague "no price
+found". If you don't need Coupang, remove its entries from
+``config/watchlist.yaml`` and keep using iHerb + momo, which work reliably.
 """
 
 from __future__ import annotations
@@ -70,6 +72,17 @@ def _new_page(browser):
     return context, page
 
 
+def _raise_if_blocked(page, url: str) -> None:
+    """Coupang's Akamai WAF serves a flat "Access Denied" page to a lot of
+    automated traffic before any product content loads at all - this is a
+    bot-detection block, not a parsing problem, so surface it as its own
+    clear error instead of the generic "could not find a price" message.
+    """
+    title = (page.title() or "").strip()
+    if title == "Access Denied":
+        raise ScrapeError(SITE, url, "blocked by Coupang's bot protection (Akamai 'Access Denied' page) - not a scraper bug, can't be fixed by adjusting selectors")
+
+
 def fetch_product(url: str) -> ProductInfo:
     def _do() -> ProductInfo:
         with sync_playwright() as p:
@@ -78,6 +91,7 @@ def fetch_product(url: str) -> ProductInfo:
             try:
                 page.goto(url, wait_until="domcontentloaded", timeout=30000)
                 page.wait_for_timeout(1500)
+                _raise_if_blocked(page, url)
 
                 product = _extract_from_json_ld(page)
                 name = None
@@ -141,6 +155,7 @@ def search(keyword: str, max_results: int = 10) -> list[ProductInfo]:
             try:
                 page.goto(SEARCH_URL.format(kw=quote(keyword)), wait_until="domcontentloaded", timeout=30000)
                 page.wait_for_timeout(1500)
+                _raise_if_blocked(page, SEARCH_URL.format(kw=keyword))
                 hrefs = page.eval_on_selector_all(
                     'a[href*="/products/"]',
                     "els => els.map(e => e.href)",

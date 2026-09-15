@@ -301,7 +301,10 @@ def format_search_results(keyword: str, results_by_site: dict[str, list[ProductI
 
     for site, products in results_by_site.items():
         if not products:
-            lines.append(f"\n[{site}] 沒有找到符合的商品，或抓取失敗")
+            if site == "coupang":
+                lines.append(f"\n[{site}] Coupang 的反爬蟲機制會直接擋掉自動化流量（Access Denied），就算商品真的存在也抓不到，這是已知限制")
+            else:
+                lines.append(f"\n[{site}] 沒有找到符合的商品，或抓取失敗")
             continue
         any_found = True
         lines.append(f"\n[{site}]")
