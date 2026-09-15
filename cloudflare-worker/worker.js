@@ -2,9 +2,10 @@
  * Instant Telegram command handler for the discount monitor watchlist.
  *
  * Deployed as a Cloudflare Worker and registered as the Telegram bot's
- * webhook. Handles /list, /remove, and "here's a product link" messages by
- * editing config/watchlist.yaml directly via the GitHub Contents API and
- * replying in Telegram - all within one HTTP request, so it feels instant.
+ * webhook. Handles /list, /remove, /reset, and "here's a product link"
+ * messages by editing config/watchlist.yaml directly via the GitHub
+ * Contents API and replying in Telegram - all within one HTTP request, so
+ * it feels instant.
  *
  * Actual price scraping is NOT done here (Workers can't run a headless
  * browser) - that still happens on the existing GitHub Actions cron
@@ -172,7 +173,12 @@ function handleList(items) {
   const lines = ["📋 目前追蹤清單："];
   items.forEach((item, i) => lines.push(describeItem(i + 1, item)));
   lines.push("\n要取消追蹤，傳 /remove 加編號，例如：/remove 2");
+  lines.push("要清空全部，傳 /reset confirm");
   return lines.join("\n");
+}
+
+function errorReplyText(err) {
+  return `❌ 儲存到 GitHub 失敗，稍後再試。\n錯誤訊息：${String((err && err.message) || err).slice(0, 300)}`;
 }
 
 function handleRemove(items, arg) {
@@ -245,11 +251,35 @@ async function handleUpdate(env, update) {
     return;
   }
 
+  if (cmd === "/reset") {
+    if (rest.join(" ").trim().toLowerCase() !== "confirm") {
+      await sendTelegramMessage(env, "⚠️ 這會清空整個追蹤清單，確定的話傳：/reset confirm");
+      return;
+    }
+    if (items.length === 0) {
+      await sendTelegramMessage(env, "目前清單本來就是空的。");
+      return;
+    }
+    try {
+      await githubPutFile(env, WATCHLIST_PATH, serializeWatchlist(header, []), sha, "chore: reset watchlist via Telegram bot");
+      await sendTelegramMessage(env, `🧹 已清空追蹤清單（原本有 ${items.length} 筆）。`);
+    } catch (err) {
+      await sendTelegramMessage(env, errorReplyText(err));
+    }
+    return;
+  }
+
   if (cmd === "/remove") {
     const result = handleRemove(items, rest.join(" "));
-    await sendTelegramMessage(env, result.reply);
-    if (result.changed) {
+    if (!result.changed) {
+      await sendTelegramMessage(env, result.reply);
+      return;
+    }
+    try {
       await githubPutFile(env, WATCHLIST_PATH, serializeWatchlist(header, result.items), sha, "chore: remove watchlist item via Telegram bot");
+      await sendTelegramMessage(env, result.reply);
+    } catch (err) {
+      await sendTelegramMessage(env, errorReplyText(err));
     }
     return;
   }
@@ -258,24 +288,32 @@ async function handleUpdate(env, update) {
   if (!urls) return;
 
   let currentItems = items;
-  let dirty = false;
+  const results = [];
   for (const url of urls) {
     const result = handleAddUrl(currentItems, url);
-    await sendTelegramMessage(env, result.reply);
-    if (result.changed) {
-      currentItems = result.items;
-      dirty = true;
-    }
+    results.push(result);
+    if (result.changed) currentItems = result.items;
   }
-  if (dirty) {
+
+  const dirty = results.some((r) => r.changed);
+  if (!dirty) {
+    for (const r of results) await sendTelegramMessage(env, r.reply);
+    return;
+  }
+
+  try {
     await githubPutFile(env, WATCHLIST_PATH, serializeWatchlist(header, currentItems), sha, "chore: add watchlist item(s) via Telegram bot");
+    for (const r of results) await sendTelegramMessage(env, r.reply);
+  } catch (err) {
+    const errText = errorReplyText(err);
+    for (const r of results) await sendTelegramMessage(env, r.changed ? errText : r.reply);
   }
 }
 
 // Named exports (in addition to the default fetch handler below) exist
 // purely so the pure logic functions can be unit tested with plain Node,
 // without needing the Workers runtime.
-export { detectSite, parseWatchlist, serializeWatchlist, handleList, handleRemove, handleAddUrl };
+export { detectSite, parseWatchlist, serializeWatchlist, handleList, handleRemove, handleAddUrl, handleUpdate };
 
 export default {
   async fetch(request, env) {
