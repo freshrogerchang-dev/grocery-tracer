@@ -39,26 +39,3 @@ def send_message(text: str) -> None:
     if not resp.ok:
         logger.error("Telegram API error %s: %s", resp.status_code, resp.text)
         resp.raise_for_status()
-
-
-def get_updates(offset: int | None = None, timeout: int = 0) -> list[dict]:
-    """Fetch new incoming messages sent to the bot since ``offset``.
-
-    Uses long-poll semantics but with ``timeout=0`` by default since this
-    runs once per scheduled GitHub Actions job rather than as a long-lived
-    process.
-    """
-    params: dict = {"timeout": timeout, "allowed_updates": '["message"]'}
-    if offset is not None:
-        params["offset"] = offset
-
-    resp = requests.get(
-        BASE_URL.format(token=_token()) + "/getUpdates",
-        params=params,
-        timeout=timeout + 15,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    if not data.get("ok"):
-        raise RuntimeError(f"Telegram getUpdates failed: {data}")
-    return data.get("result", [])

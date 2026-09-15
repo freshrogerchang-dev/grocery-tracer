@@ -28,12 +28,14 @@
 
 **A. 傳 Telegram 訊息給機器人（推薦）**
 
-直接把商品頁網址貼給你的 Telegram 機器人，它下次執行時會自動判斷是 iHerb / momo / Coupang，加進 `config/watchlist.yaml` 並回覆確認訊息（已經追蹤過的會提示重複、看不出網站的會提示略過）。因為是跟著排程一起檢查，最久要等到下一次排程（預設 6 小時內）才會處理，也可以到 Actions 頁籤手動按 `Run workflow` 立即處理。
+直接把商品頁網址貼給你的 Telegram 機器人，它會判斷是 iHerb / momo / Coupang，加進 `config/watchlist.yaml` 並回覆確認訊息（已經追蹤過的會提示重複、看不出網站的會提示略過）。
 
 機器人也支援兩個指令：
 
 - `/list` — 列出目前追蹤清單，附編號
 - `/remove <編號>` — 取消追蹤該筆（先傳 `/list` 看編號）。也可以用 `/remove <網址或關鍵字的一部分>`，例如 `/remove momoshop`，符合超過一筆時會請你改用編號
+
+這些指令是**即時**回覆的（見下面第 6 節設定 Cloudflare Worker），不用等排程。設定好 Worker 之前，這些訊息不會被處理，也不會排到下次排程自動補上（見第 6 節的技術限制說明）。
 
 用 `target_price` / `target_discount_pct` 設價格門檻，目前還是要編輯 `config/watchlist.yaml`。
 
@@ -77,12 +79,48 @@ gh repo create <repo-name> --private --source=. --push
 
 推上去之後，到 repo 的 Actions 頁籤手動觸發一次 `Discount Monitor` workflow（`workflow_dispatch`），確認執行成功、`data/state.json` 有被自動 commit 回來。之後就會照 `.github/workflows/monitor.yml` 裡的 cron 設定（預設每 6 小時）自動執行。
 
+## 6. 設定即時的 Telegram 指令（Cloudflare Worker）
+
+`/list`、`/remove`、傳網址新增商品這三件事，是由一個獨立的 Cloudflare Worker（免費）即時處理的，跟第 5 節的排程爬蟲是兩件事：Worker 只負責編輯 `config/watchlist.yaml` 並秒回你，實際的折扣爬蟲還是照舊每 6 小時跑一次（Worker 沒辦法跑瀏覽器爬蟲）。這步驟是選用的，不設定的話，Telegram 訊息不會被處理（沒有排程輪詢的備援機制了）。
+
+**A. 建立 GitHub Token**
+
+到 GitHub → 右上角頭像 → Settings → Developer settings → Fine-grained tokens → Generate new token：
+- Repository access 選 **Only select repositories** → 選這個 repo
+- Permissions → Contents → **Read and write**
+- 產生後複製 token（只會顯示一次）
+
+**B. 建立 Cloudflare Worker**
+
+1. 到 [dash.cloudflare.com](https://dash.cloudflare.com) 註冊/登入（免費）
+2. 左側選 **Workers & Pages** → **Create** → **Create Worker**，取個名字（例如 `discount-monitor-bot`）→ Deploy
+3. 點 **Edit code**，把預設的範例程式碼全部刪掉，貼上 [cloudflare-worker/worker.js](cloudflare-worker/worker.js) 的完整內容 → **Save and deploy**
+4. 回到 Worker 頁面 → **Settings** → **Variables and Secrets** → 新增以下 5 個，全部選 **Secret** 類型：
+   - `TELEGRAM_BOT_TOKEN`（跟 GitHub Secrets 裡的同一個）
+   - `TELEGRAM_CHAT_ID`（同上）
+   - `GITHUB_TOKEN`（上一步產生的 GitHub token）
+   - `GITHUB_REPO`（格式：`你的帳號/repo名稱`，例如 `freshrogerchang-dev/grocery-tracer`）
+   - `WEBHOOK_SECRET`（自己隨便打一串英數字，當作驗證密碼，例如用密碼產生器生一組）
+5. 記下 Worker 的網址（Settings 頁上方會顯示，長得像 `https://discount-monitor-bot.你的帳號.workers.dev`）
+
+**C. 註冊 Telegram Webhook**
+
+瀏覽器打開這個網址（把 `<TOKEN>`、`<WORKER_URL>`、`<WEBHOOK_SECRET>` 換成你剛剛的值）：
+
+```
+https://api.telegram.org/bot<TOKEN>/setWebhook?url=<WORKER_URL>&secret_token=<WEBHOOK_SECRET>
+```
+
+回傳 `{"ok":true,"result":true,"description":"Webhook was set"}` 就代表成功。之後傳 `/list` 給機器人測試看看，應該幾秒內就有回覆。
+
+**還原成排程輪詢模式**：如果之後想拆掉 Worker，到 `https://api.telegram.org/bot<TOKEN>/deleteWebhook` 取消 webhook 即可；但拆掉後 Telegram 指令會完全沒有人處理（沒有輪詢備援），只剩下第 5 節的排程爬蟲還會正常運作。
+
 ## 運作邏輯
 
-- 每次執行都會把當下抓到的價格寫進 `data/state.json`。
+- 每次排程執行都會把當下抓到的價格寫進 `data/state.json`。
 - 判斷「要不要通知」：
   1. 如果商品有設定 `target_price` 或 `target_discount_pct`，用門檻判斷。
   2. 沒設定的話，若網站本身有標示原價/劃線價，只要現在是折扣價就通知。
   3. 網站沒標示原價（例如搜尋結果列表），改用「這次抓到的價格比上次記錄的價格低」當作折扣訊號。
 - 同一個商品在同一個價格只會通知一次，除非價格又更低，或距離上次通知已超過 7 天。
-- 每次執行也會順便檢查 Telegram 有沒有新訊息（`data/telegram_offset.json` 記錄檢查到哪則訊息），把訊息裡的商品連結加進追蹤清單。
+- `/list`、`/remove`、新增商品連結由 Cloudflare Worker 即時處理（見第 6 節），跟排程爬蟲互相獨立。

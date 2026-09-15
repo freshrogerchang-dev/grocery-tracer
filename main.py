@@ -9,7 +9,6 @@ from pathlib import Path
 
 import yaml
 
-from intake import sync_from_telegram
 from notify.telegram import send_message
 from scrapers import ProductInfo, ScrapeError
 
@@ -128,11 +127,10 @@ def format_notification(product: ProductInfo) -> str:
 
 
 def run(dry_run: bool = False) -> None:
-    if not dry_run:
-        # Pick up any product links people sent the bot since the last run
-        # before checking prices, so new items get checked in this same run.
-        sync_from_telegram()
-
+    # Telegram commands (/list, /remove, adding a link) are handled instantly
+    # by the Cloudflare Worker webhook (see cloudflare-worker/worker.js), not
+    # here - Telegram only allows a webhook OR getUpdates polling, not both,
+    # so this script no longer touches Telegram's inbox at all.
     watchlist = load_watchlist()
     state = load_state()
     items = watchlist.get("items", [])
