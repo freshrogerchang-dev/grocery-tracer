@@ -45,7 +45,13 @@ def _new_page(browser):
     return context, page
 
 
-def _get_soup(url: str) -> BeautifulSoup:
+def _get_soup(url: str, *, wait_selector: str = 'script[type="application/ld+json"]', wait_for_promo: bool = True) -> BeautifulSoup:
+    """Render a page with Playwright and return its parsed HTML.
+
+    ``wait_selector``/``wait_for_promo`` default to product-page behavior
+    (see below); search-result pages don't have a per-product JSON-LD block
+    or the async promo widget, so ``search()`` passes lighter-weight values.
+    """
     with sync_playwright() as p:
         browser = p.chromium.launch()
         context, page = _new_page(browser)
@@ -59,18 +65,19 @@ def _get_soup(url: str) -> BeautifulSoup:
                     page.goto(tw_url, wait_until="domcontentloaded", timeout=30000)
 
             # script tags are never "visible", so wait for them to be attached instead
-            page.wait_for_selector('script[type="application/ld+json"]', timeout=15000, state="attached")
+            page.wait_for_selector(wait_selector, timeout=15000, state="attached")
 
-            # The pricing widget starts in a default "no discount" state and
-            # only flips to a strike-through/discount state after an async
-            # JS call (promo/coupon eligibility) resolves - domcontentloaded
-            # fires well before that, so we'd otherwise always see "no
-            # discount" even when one is actually active. Give it a moment.
-            try:
-                page.wait_for_load_state("networkidle", timeout=15000)
-            except Exception:
-                pass  # best effort - proceed with whatever state we have
-            page.wait_for_timeout(1000)
+            if wait_for_promo:
+                # The pricing widget starts in a default "no discount" state
+                # and only flips to a strike-through/discount state after an
+                # async JS call (promo/coupon eligibility) resolves -
+                # domcontentloaded fires well before that, so we'd otherwise
+                # always see "no discount" even when one is active.
+                try:
+                    page.wait_for_load_state("networkidle", timeout=15000)
+                except Exception:
+                    pass  # best effort - proceed with whatever state we have
+                page.wait_for_timeout(1000)
 
             html = page.content()
         finally:
@@ -190,7 +197,7 @@ def fetch_product(url: str) -> ProductInfo:
 
 def search(keyword: str, max_results: int = 10) -> list[ProductInfo]:
     def _do() -> list[str]:
-        soup = _get_soup(SEARCH_URL.format(kw=keyword))
+        soup = _get_soup(SEARCH_URL.format(kw=keyword), wait_selector='a[href*="/pr/"]', wait_for_promo=False)
         links = []
         for a in soup.select('a[href*="/pr/"]'):
             href = a.get("href")

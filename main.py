@@ -243,6 +243,54 @@ def run(dry_run: bool = False) -> None:
         save_state(state)
 
 
+SEARCH_MAX_RESULTS_PER_SITE = 5
+SEARCH_MESSAGE_LIMIT = 4000  # Telegram caps messages at 4096 chars
+
+
+def format_search_results(keyword: str, results_by_site: dict[str, list[ProductInfo]]) -> str:
+    lines = [f"🔍 搜尋「{keyword}」結果："]
+    any_found = False
+
+    for site, products in results_by_site.items():
+        if not products:
+            lines.append(f"\n[{site}] 沒有找到符合的商品，或抓取失敗")
+            continue
+        any_found = True
+        lines.append(f"\n[{site}]")
+        for product in products:
+            price_txt = f"{product.currency} {product.current_price:,.0f}"
+            if product.original_price and product.original_price > product.current_price:
+                price_txt += f"（原價 {product.original_price:,.0f}，折 {product.discount_pct:.0f}%）"
+            name = product.name[:60]
+            lines.append(f"• {name}\n  {price_txt}\n  {product.url}")
+
+    if not any_found:
+        lines.append("\n三個網站都沒有找到符合的商品，或都抓取失敗。")
+
+    message = "\n".join(lines)
+    if len(message) > SEARCH_MESSAGE_LIMIT:
+        message = message[:SEARCH_MESSAGE_LIMIT] + "\n…（結果太多，已截斷）"
+    return message
+
+
+def run_search(keyword: str, dry_run: bool = False) -> None:
+    scrapers = _load_scrapers()
+    results_by_site: dict[str, list[ProductInfo]] = {}
+    for site_name, scraper in scrapers.items():
+        try:
+            results_by_site[site_name] = scraper.search(keyword, max_results=SEARCH_MAX_RESULTS_PER_SITE)
+        except Exception as exc:  # noqa: BLE001 - a search failing on one site shouldn't kill the others
+            logger.warning("search failed for %s: %s", site_name, exc)
+            results_by_site[site_name] = []
+
+    message = format_search_results(keyword, results_by_site)
+    if dry_run:
+        logger.info("--dry-run: would send search results:\n\n%s", message)
+    else:
+        send_message(message)
+        logger.info("sent search results for keyword=%r", keyword)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Check iHerb / momo / Coupang watchlist for discounts.")
     parser.add_argument(
@@ -250,8 +298,17 @@ def main() -> None:
         action="store_true",
         help="Scrape and print results without sending notifications or writing state.",
     )
+    parser.add_argument(
+        "--search",
+        metavar="KEYWORD",
+        default=None,
+        help="Search all sites for KEYWORD and report results via Telegram, instead of running the normal watchlist check.",
+    )
     args = parser.parse_args()
-    run(dry_run=args.dry_run)
+    if args.search:
+        run_search(args.search, dry_run=args.dry_run)
+    else:
+        run(dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

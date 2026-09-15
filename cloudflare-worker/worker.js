@@ -15,8 +15,10 @@
  * Required Worker secrets/vars (set in the Cloudflare dashboard):
  *   TELEGRAM_BOT_TOKEN  - same bot token used by the GitHub Actions job
  *   TELEGRAM_CHAT_ID    - your Telegram chat id (only this chat is honored)
- *   GITHUB_TOKEN        - a fine-grained GitHub PAT scoped to this repo,
- *                         with Contents: Read and write permission
+ *   GITHUB_TOKEN        - a fine-grained GitHub PAT scoped to this repo, with
+ *                         Contents: Read and write AND Actions: Read and
+ *                         write permission (the latter is needed for
+ *                         /search, which triggers a GitHub Actions run)
  *   GITHUB_REPO         - "owner/repo", e.g. "freshrogerchang-dev/grocery-tracer"
  *   WEBHOOK_SECRET       - a random string you make up; must match the
  *                         secret_token used when registering the webhook
@@ -36,6 +38,7 @@ const STATE_PATH = "data/state.json";
 const HELP_TEXT = [
   "可用指令：",
   "/list — 列出目前追蹤清單",
+  "/search <關鍵字> — 到 iHerb / momo / Coupang 搜尋商品，約 1-2 分鐘後回覆結果（不是即時的，會觸發 GitHub Actions 執行）",
   "/price <編號> — 查看該商品上次排程檢查到的價格（不是即時的，是排程爬蟲最近一次、最長 6 小時內抓到的資料），有 2 筆以上歷史價格會附上走勢圖網址",
   "/price all — 一次列出所有商品的價格",
   "/remove <編號 或 網址/關鍵字片段> — 取消追蹤該筆",
@@ -153,6 +156,26 @@ async function githubPutFile(env, path, newText, sha, message) {
   });
   if (!res.ok) {
     throw new Error(`GitHub putFile ${path} failed: ${res.status} ${await res.text()}`);
+  }
+}
+
+const WORKFLOW_FILE = "monitor.yml";
+
+async function githubDispatchWorkflow(env, inputs) {
+  const res = await fetch(
+    `https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+        "User-Agent": "discount-monitor-worker",
+        Accept: "application/vnd.github+json",
+      },
+      body: JSON.stringify({ ref: "main", inputs }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`GitHub workflow dispatch failed: ${res.status} ${await res.text()}`);
   }
 }
 
@@ -364,6 +387,24 @@ async function handleUpdate(env, update, baseUrl) {
 
   if (cmd === "/help" || cmd === "/start") {
     await sendTelegramMessage(env, HELP_TEXT);
+    return;
+  }
+
+  if (cmd === "/search") {
+    const keyword = rest.join(" ").trim();
+    if (!keyword) {
+      await sendTelegramMessage(env, "請指定搜尋關鍵字，例如：/search 無線滑鼠");
+      return;
+    }
+    try {
+      await githubDispatchWorkflow(env, { search: keyword });
+      await sendTelegramMessage(env, `🔍 已開始搜尋「${keyword}」，會到 iHerb / momo / Coupang 找，大概 1-2 分鐘後把結果傳給你。`);
+    } catch (err) {
+      await sendTelegramMessage(
+        env,
+        `❌ 觸發搜尋失敗，稍後再試。\n錯誤訊息：${String((err && err.message) || err).slice(0, 300)}\n（如果是 403，檢查 GITHUB_TOKEN 有沒有 Actions: Read and write 權限）`
+      );
+    }
     return;
   }
 

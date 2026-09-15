@@ -33,6 +33,7 @@
 機器人也支援這些指令：
 
 - `/list` — 列出目前追蹤清單，附編號
+- `/search <關鍵字>` — 到 iHerb / momo / Coupang 搜尋商品並回傳結果，**不是即時的**（會觸發 GitHub Actions 執行，約 1-2 分鐘後才會收到搜尋結果），需要額外設定，見第 7 節
 - `/price <編號>` — 查看該商品**排程爬蟲上次抓到**的價格與是否有折扣（不是即時查詢，最長會是 6 小時前的資料；Worker 沒辦法自己跑瀏覽器爬蟲）。有 2 筆以上歷史價格時會附上價格走勢圖的網址（純網頁、不需要額外設定）
 - `/price all` — 一次列出所有商品的價格
 - `/remove <編號>` — 取消追蹤該筆（先傳 `/list` 看編號）。也可以用 `/remove <網址或關鍵字的一部分>`，例如 `/remove momoshop`，符合超過一筆時會請你改用編號
@@ -119,6 +120,16 @@ https://api.telegram.org/bot<TOKEN>/setWebhook?url=<WORKER_URL>&secret_token=<WE
 回傳 `{"ok":true,"result":true,"description":"Webhook was set"}` 就代表成功。之後傳 `/list` 給機器人測試看看，應該幾秒內就有回覆。
 
 **還原成排程輪詢模式**：如果之後想拆掉 Worker，到 `https://api.telegram.org/bot<TOKEN>/deleteWebhook` 取消 webhook 即可；但拆掉後 Telegram 指令會完全沒有人處理（沒有輪詢備援），只剩下第 5 節的排程爬蟲還會正常運作。
+
+## 7. 設定 `/search`（選用）
+
+`/search` 是請 Worker 去觸發一次 GitHub Actions 執行搜尋（跟排程爬蟲用同一支程式，只是多一個 `--search` 參數），所以需要額外一個權限、也需要 workflow 檔案支援 `search` 輸入參數：
+
+1. 回到你在第 6 節建立的那個 GitHub fine-grained token（Settings → Developer settings → Personal access tokens → Fine-grained tokens），點進去編輯，**額外加上 Actions 權限：Read and write**（原本應該只有 Contents: Read and write）
+2. 確認 `.github/workflows/monitor.yml` 裡 `on:` 底下有 `workflow_dispatch.inputs.search`（如果是照這份 repo 最新版設定的就已經有了；如果你的 workflow 檔案是比較早之前貼的版本，需要重新整份換成最新內容）
+3. 存檔後，傳 `/search 關鍵字` 給機器人測試，應該立刻回覆「已開始搜尋」，大約 1-2 分鐘後收到三個網站的搜尋結果
+
+如果 `/search` 回你「觸發搜尋失敗」且錯誤是 403，八成就是步驟 1 的 Actions 權限沒加對。
 
 ## 運作邏輯
 
