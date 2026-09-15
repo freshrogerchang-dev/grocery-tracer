@@ -115,6 +115,12 @@ def should_notify(product: ProductInfo, item: dict, global_cfg: dict, state_entr
     return True
 
 
+IHERB_COUPON_REMINDER = (
+    "💡 這是公開售價，沒有套用個人優惠碼。iHerb 常有首購折扣碼（例如 NEW20），"
+    "登入你的帳號查看頁面上是否有適用的優惠碼，可能比這裡顯示的價格更低。"
+)
+
+
 def format_notification(product: ProductInfo) -> str:
     lines = [f"🔻 <b>{product.name}</b>", f"網站：{product.site}"]
     if product.original_price and product.original_price > product.current_price:
@@ -125,6 +131,8 @@ def format_notification(product: ProductInfo) -> str:
     else:
         lines.append(f"價格：{product.currency} {product.current_price:,.0f}")
     lines.append(product.url)
+    if product.site == "iherb":
+        lines.append(IHERB_COUPON_REMINDER)
     return "\n".join(lines)
 
 

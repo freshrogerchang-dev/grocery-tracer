@@ -203,6 +203,9 @@ async function loadStateEntries(env) {
   }
 }
 
+const IHERB_COUPON_REMINDER =
+  "💡 這是公開售價，沒有套用個人優惠碼。iHerb 常有首購折扣碼（例如 NEW20），登入你的帳號查看頁面上是否有適用的優惠碼，可能比這裡顯示的價格更低。";
+
 function formatPriceEntry(item, entry) {
   const currency = entry.currency || "";
   const lines = [`💰 <b>${(entry && entry.name) || item.url}</b>`, `網站：${item.site}`];
@@ -214,6 +217,7 @@ function formatPriceEntry(item, entry) {
   }
   if (entry.last_seen_at) lines.push(`上次檢查：${entry.last_seen_at}`);
   lines.push(item.url);
+  if (item.site === "iherb") lines.push(IHERB_COUPON_REMINDER);
   return lines.join("\n");
 }
 
