@@ -24,7 +24,15 @@
 
 ## 3. 編輯追蹤清單
 
-打開 [config/watchlist.yaml](config/watchlist.yaml)：
+兩種方式都可以：
+
+**A. 傳 Telegram 訊息給機器人（推薦）**
+
+直接把商品頁網址貼給你的 Telegram 機器人，它下次執行時會自動判斷是 iHerb / momo / Coupang，加進 `config/watchlist.yaml` 並回覆確認訊息（已經追蹤過的會提示重複、看不出網站的會提示略過）。因為是跟著排程一起檢查，最久要等到下一次排程（預設 6 小時內）才會處理，也可以到 Actions 頁籤手動按 `Run workflow` 立即處理。
+
+這種方式目前只能「新增」，用 `target_price` / `target_discount_pct` 設門檻或要「移除」商品還是要編輯 `config/watchlist.yaml`。
+
+**B. 直接編輯 `config/watchlist.yaml`**
 
 ```yaml
 notify_on_any_discount: true    # 全域預設：有折扣就通知
@@ -72,3 +80,4 @@ gh repo create <repo-name> --private --source=. --push
   2. 沒設定的話，若網站本身有標示原價/劃線價，只要現在是折扣價就通知。
   3. 網站沒標示原價（例如搜尋結果列表），改用「這次抓到的價格比上次記錄的價格低」當作折扣訊號。
 - 同一個商品在同一個價格只會通知一次，除非價格又更低，或距離上次通知已超過 7 天。
+- 每次執行也會順便檢查 Telegram 有沒有新訊息（`data/telegram_offset.json` 記錄檢查到哪則訊息），把訊息裡的商品連結加進追蹤清單。

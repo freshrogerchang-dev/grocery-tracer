@@ -9,6 +9,7 @@ from pathlib import Path
 
 import yaml
 
+from intake import sync_from_telegram
 from notify.telegram import send_message
 from scrapers import ProductInfo, ScrapeError
 
@@ -127,6 +128,11 @@ def format_notification(product: ProductInfo) -> str:
 
 
 def run(dry_run: bool = False) -> None:
+    if not dry_run:
+        # Pick up any product links people sent the bot since the last run
+        # before checking prices, so new items get checked in this same run.
+        sync_from_telegram()
+
     watchlist = load_watchlist()
     state = load_state()
     items = watchlist.get("items", [])
