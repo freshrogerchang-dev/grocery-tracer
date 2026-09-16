@@ -154,7 +154,7 @@ WEEKLY_DIGEST_STATE_KEY = "_weekly_digest"
 WEEKLY_DIGEST_MIN_GAP = timedelta(days=6)  # guards against multiple runs landing on the same Monday
 
 
-def maybe_send_weekly_digest(state: dict, item_count: int, dry_run: bool) -> None:
+def maybe_send_weekly_digest(state: dict, items: list[dict], dry_run: bool) -> None:
     now = datetime.now(timezone.utc)
     if now.weekday() != WEEKLY_DIGEST_WEEKDAY:
         return
@@ -172,14 +172,22 @@ def maybe_send_weekly_digest(state: dict, item_count: int, dry_run: bool) -> Non
         and entry.get("last_original_price")
         and entry["last_original_price"] > entry.get("last_price", 0)
     ]
+    failing = [
+        key
+        for key, entry in state.items()
+        if key.startswith("failtrack:") and entry.get("count", 0) >= FAILURE_NOTIFY_THRESHOLD
+    ]
+    paused_count = sum(1 for item in items if item.get("paused"))
 
-    lines = [f"📅 每週摘要：目前追蹤 {item_count} 個商品。"]
+    lines = [f"📅 每週摘要：目前追蹤 {len(items)} 個商品" + (f"（{paused_count} 個暫停中）" if paused_count else "") + "。"]
     if discounted:
         lines.append(f"目前有 {len(discounted)} 個商品正在打折：")
         for entry in discounted[:10]:
             lines.append(f"• {entry.get('name', entry.get('url'))} — {entry.get('currency', '')} {entry.get('last_price')}")
     else:
         lines.append("目前沒有商品在打折，會持續監控中。")
+    if failing:
+        lines.append(f"⚠️ 有 {len(failing)} 個商品持續抓取失敗中，傳 /status 查看詳情。")
     message = "\n".join(lines)
 
     if dry_run:
@@ -206,6 +214,9 @@ def run(dry_run: bool = False) -> None:
     now_iso = datetime.now(timezone.utc).isoformat()
 
     for item in items:
+        if item.get("paused"):
+            continue
+
         products = collect_products(item)
         fkey = failure_key(item)
         fail_entry = state.get(fkey, {})
@@ -217,7 +228,10 @@ def run(dry_run: bool = False) -> None:
                 last_notified_at is None
                 or datetime.now(timezone.utc) - datetime.fromisoformat(last_notified_at) >= FAILURE_RENOTIFY_COOLDOWN
             )
-            if count >= FAILURE_NOTIFY_THRESHOLD and cooled_down:
+            # Coupang is a confirmed *permanent* block (Akamai "Access
+            # Denied"), not a transient failure - repeating this alert every
+            # few days for something we already know about is just noise.
+            if item.get("site") != "coupang" and count >= FAILURE_NOTIFY_THRESHOLD and cooled_down:
                 failure_notices.append(format_failure_notice(item, count))
                 fail_entry["last_notified_at"] = now_iso
             fail_entry["count"] = count
@@ -285,7 +299,7 @@ def run(dry_run: bool = False) -> None:
             send_message(message)
             logger.info("sent failure alert for %d item(s)", len(failure_notices))
 
-    maybe_send_weekly_digest(state, len(items), dry_run)
+    maybe_send_weekly_digest(state, items, dry_run)
 
     if not dry_run:
         save_state(state)

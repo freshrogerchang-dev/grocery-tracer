@@ -38,11 +38,14 @@ const STATE_PATH = "data/state.json";
 const HELP_TEXT = [
   "可用指令：",
   "/list — 列出目前追蹤清單",
+  "/status — 系統健康狀態（上次/下次排程時間、追蹤數量、持續失敗的商品）",
   "/search <關鍵字> — 到 iHerb / momo / Coupang 搜尋商品，約 1-2 分鐘後回覆結果（不是即時的，會觸發 GitHub Actions 執行）",
   "/price <編號> — 查看該商品上次排程檢查到的價格（不是即時的，是排程爬蟲最近一次、最長 6 小時內抓到的資料），有 2 筆以上歷史價格會附上走勢圖網址",
   "/price all — 一次列出所有商品的價格",
   "/setprice <編號> <價格> — 設定價格門檻，價格<=這個數字才通知（傳 off 取消）",
   "/setdiscount <編號> <百分比> — 設定折扣門檻，折扣>=這個百分比才通知（傳 off 取消）",
+  "/pause <編號> — 暫停追蹤該筆（排程會跳過，資料保留）",
+  "/resume <編號> — 恢復追蹤該筆",
   "/remove <編號 或 網址/關鍵字片段> — 取消追蹤該筆",
   "/remove all confirm — 取消追蹤全部（等同 /reset confirm）",
   "/reset confirm — 清空整個追蹤清單",
@@ -104,6 +107,11 @@ function parseWatchlist(text) {
       current.target_discount_pct = tdMatch[1];
       continue;
     }
+    const pausedMatch = line.match(/^\s*paused:\s*(true|false)\s*$/);
+    if (pausedMatch) {
+      current.paused = pausedMatch[1] === "true";
+      continue;
+    }
   }
   if (current) items.push(current);
 
@@ -116,6 +124,7 @@ function formatItemBlock(item) {
   if (item.keyword) lines.push(`    keyword: "${item.keyword}"`);
   if (item.target_price !== undefined) lines.push(`    target_price: ${item.target_price}`);
   if (item.target_discount_pct !== undefined) lines.push(`    target_discount_pct: ${item.target_discount_pct}`);
+  if (item.paused) lines.push(`    paused: true`);
   return lines.join("\n");
 }
 
@@ -201,6 +210,7 @@ function describeItem(index, item, entries) {
   const conditions = [];
   if (item.target_price !== undefined) conditions.push(`價格<=${item.target_price}`);
   if (item.target_discount_pct !== undefined) conditions.push(`折扣>=${item.target_discount_pct}%`);
+  if (item.paused) conditions.push("⏸已暫停");
   const suffix = conditions.length ? `（${conditions.join(", ")}）` : "";
   if (item.url) {
     const entry = entries && entries.find((e) => e.url === item.url);
@@ -235,6 +245,67 @@ async function loadStateEntries(env) {
     console.error("loadStateEntries failed:", err);
     return [];
   }
+}
+
+async function loadRawState(env) {
+  try {
+    const { text } = await githubGetFile(env, STATE_PATH);
+    return JSON.parse(text);
+  } catch (err) {
+    console.error("loadRawState failed:", err);
+    return null;
+  }
+}
+
+const FAILURE_NOTIFY_THRESHOLD = 3; // keep in sync with main.py's constant of the same name
+const WEEKLY_DIGEST_STATE_KEY = "_weekly_digest"; // keep in sync with main.py's constant of the same name
+const SCHEDULE_HOURS_UTC = [0, 6, 12, 18]; // keep in sync with the cron in .github/workflows/monitor.yml
+
+function nextScheduledRun(now) {
+  const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  for (const h of SCHEDULE_HOURS_UTC) {
+    const candidate = new Date(base);
+    candidate.setUTCHours(h, 0, 0, 0);
+    if (candidate > now) return candidate;
+  }
+  const tomorrow = new Date(base);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  return tomorrow;
+}
+
+async function handleStatus(items, env) {
+  const pausedCount = items.filter((i) => i.paused).length;
+  const lines = ["📊 系統狀態", `追蹤商品：${items.length} 個` + (pausedCount ? `（${pausedCount} 個暫停中）` : "")];
+
+  const state = await loadRawState(env);
+  if (state) {
+    const lastSeenTimes = Object.entries(state)
+      .filter(([key]) => !key.startsWith("failtrack:") && key !== WEEKLY_DIGEST_STATE_KEY)
+      .map(([, v]) => v.last_seen_at)
+      .filter(Boolean)
+      .sort();
+    const lastRun = lastSeenTimes.length ? lastSeenTimes[lastSeenTimes.length - 1] : null;
+    lines.push(`上次排程執行：${lastRun || "還沒有資料"}`);
+
+    const failing = Object.entries(state).filter(
+      ([key, v]) => key.startsWith("failtrack:") && (v.count || 0) >= FAILURE_NOTIFY_THRESHOLD
+    );
+    if (failing.length) {
+      lines.push(`\n持續失敗中（${failing.length} 個）：`);
+      for (const [key, v] of failing) {
+        lines.push(`• ${key.replace(/^failtrack:/, "")} — 已連續 ${v.count} 次`);
+      }
+    } else {
+      lines.push("目前沒有商品持續失敗。");
+    }
+  } else {
+    lines.push("讀取排程資料失敗，稍後再試。");
+  }
+
+  const next = nextScheduledRun(new Date());
+  lines.push(`\n下次排程執行：約 ${next.toISOString()}（每 6 小時一次）`);
+
+  return lines.join("\n");
 }
 
 const IHERB_COUPON_REMINDER =
@@ -400,6 +471,39 @@ function handleSetDiscount(items, argText) {
   });
 }
 
+function handleSetPaused(items, argText, pausedValue) {
+  const arg = (argText || "").trim();
+  const cmdName = pausedValue ? "/pause" : "/resume";
+  if (!/^\d+$/.test(arg)) {
+    return { reply: `請指定編號，例如：${cmdName} 1\n先傳 /list 查看編號。`, items, changed: false };
+  }
+  const n = parseInt(arg, 10);
+  if (n < 1 || n > items.length) {
+    return { reply: `編號 ${n} 不存在，目前清單有 1~${items.length} 筆，先傳 /list 確認。`, items, changed: false };
+  }
+
+  const item = items[n - 1];
+  const desc = item.url || `關鍵字「${item.keyword}」`;
+  if (Boolean(item.paused) === pausedValue) {
+    return {
+      reply: pausedValue ? `第 ${n} 筆本來就是暫停狀態：\n${desc}` : `第 ${n} 筆本來就沒有暫停：\n${desc}`,
+      items,
+      changed: false,
+    };
+  }
+
+  const updated = { ...item };
+  if (pausedValue) updated.paused = true;
+  else delete updated.paused;
+
+  const newItems = items.slice();
+  newItems[n - 1] = updated;
+  const reply = pausedValue
+    ? `⏸ 已暫停追蹤第 ${n} 筆（排程會跳過它，資料還在）：\n${desc}`
+    : `▶️ 已恢復追蹤第 ${n} 筆：\n${desc}`;
+  return { reply, items: newItems, changed: true };
+}
+
 function handleRemove(items, arg) {
   arg = (arg || "").trim();
   if (!arg) {
@@ -498,6 +602,11 @@ async function handleUpdate(env, update, baseUrl) {
     return;
   }
 
+  if (cmd === "/status") {
+    await sendTelegramMessage(env, await handleStatus(items, env));
+    return;
+  }
+
   if (cmd === "/setprice" || cmd === "/setdiscount") {
     const result = cmd === "/setprice" ? handleSetPrice(items, rest.join(" ")) : handleSetDiscount(items, rest.join(" "));
     if (!result.changed) {
@@ -506,6 +615,27 @@ async function handleUpdate(env, update, baseUrl) {
     }
     try {
       await githubPutFile(env, WATCHLIST_PATH, serializeWatchlist(header, result.items), sha, "chore: update notify threshold via Telegram bot");
+      await sendTelegramMessage(env, result.reply);
+    } catch (err) {
+      await sendTelegramMessage(env, errorReplyText(err));
+    }
+    return;
+  }
+
+  if (cmd === "/pause" || cmd === "/resume") {
+    const result = handleSetPaused(items, rest.join(" "), cmd === "/pause");
+    if (!result.changed) {
+      await sendTelegramMessage(env, result.reply);
+      return;
+    }
+    try {
+      await githubPutFile(
+        env,
+        WATCHLIST_PATH,
+        serializeWatchlist(header, result.items),
+        sha,
+        `chore: ${cmd === "/pause" ? "pause" : "resume"} watchlist item via Telegram bot`
+      );
       await sendTelegramMessage(env, result.reply);
     } catch (err) {
       await sendTelegramMessage(env, errorReplyText(err));
@@ -696,8 +826,11 @@ export {
   handleAddUrl,
   handleSetPrice,
   handleSetDiscount,
+  handleSetPaused,
   handlePrice,
   handlePriceAll,
+  handleStatus,
+  nextScheduledRun,
   formatPriceEntry,
   isAllTimeLow,
   performReset,
