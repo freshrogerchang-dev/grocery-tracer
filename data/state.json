@@ -1,4 +1,7 @@
 {
+  "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
+    "count": 1
+  },
   "iherb:141329": {
     "currency": "TWD",
     "history": [
@@ -22,7 +25,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 672.0,
-    "last_seen_at": "2026-09-18T10:07:35.163303+00:00",
+    "last_seen_at": "2026-09-18T15:16:03.017950+00:00",
     "name": "Trace, 甘氨酸鎂粉，葡萄味，6.35 盎司（180 克）",
     "url": "https://iherb.co/cWt7YSm?utm_medium=appshare"
   },
@@ -49,7 +52,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 2598.0,
-    "last_seen_at": "2026-09-18T10:07:35.163303+00:00",
+    "last_seen_at": "2026-09-18T15:16:03.017950+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
@@ -103,7 +106,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 2764.0,
-    "last_seen_at": "2026-09-18T10:07:35.163303+00:00",
+    "last_seen_at": "2026-09-18T15:16:03.017950+00:00",
     "name": "挪帝克, Ultimate Omega® Xtra 高級魚油，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare"
   },
