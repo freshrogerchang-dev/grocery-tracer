@@ -31,7 +31,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 674.0,
-    "last_seen_at": "2026-09-19T09:48:38.639480+00:00",
+    "last_seen_at": "2026-09-19T14:53:30.855993+00:00",
     "name": "Trace, 甘氨酸鎂粉，葡萄味，6.35 盎司（180 克）",
     "url": "https://iherb.co/cWt7YSm?utm_medium=appshare"
   },
@@ -63,7 +63,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 2604.0,
-    "last_seen_at": "2026-09-19T09:48:38.639480+00:00",
+    "last_seen_at": "2026-09-19T14:53:30.855993+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
@@ -95,7 +95,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 1136.0,
-    "last_seen_at": "2026-09-19T09:48:38.639480+00:00",
+    "last_seen_at": "2026-09-19T14:53:30.855993+00:00",
     "name": "Force Factor, Ultimate Magtein®，L-蘇氨酸鎂，混合漿果味，60 片軟咀嚼片",
     "url": "https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare"
   },
@@ -127,7 +127,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 2771.0,
-    "last_seen_at": "2026-09-19T09:48:38.639480+00:00",
+    "last_seen_at": "2026-09-19T14:53:30.855993+00:00",
     "name": "挪帝克, Ultimate Omega® Xtra 高級魚油，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare"
   },
@@ -137,6 +137,23 @@
     "last_original_price": null,
     "last_price": 611.0,
     "last_seen_at": "2026-09-15T11:55:29.177287+00:00"
+  },
+  "momo:12669677": {
+    "currency": "TWD",
+    "history": [
+      {
+        "date": "2026-09-19T14:53:30.855993+00:00",
+        "original_price": 3332.0,
+        "price": 2299.0
+      }
+    ],
+    "last_notified_at": "2026-09-19T14:53:30.855993+00:00",
+    "last_notified_price": 2299.0,
+    "last_original_price": 3332.0,
+    "last_price": 2299.0,
+    "last_seen_at": "2026-09-19T14:53:30.855993+00:00",
+    "name": "【FOREO】LUNA mini 3 輕便型潔面儀(洗臉機 美國原廠公司貨 兩年保固)",
+    "url": "https://www.momoshop.com.tw/product/12669677?simOrderYn=0"
   },
   "momo:13217153": {
     "last_notified_at": "2026-09-15T06:46:53.830312+00:00",
