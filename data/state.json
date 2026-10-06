@@ -2,6 +2,9 @@
   "_weekly_digest": {
     "last_sent_at": "2026-10-05T02:34:51.695981+00:00"
   },
+  "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
+    "count": 1
+  },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
     "count": 0,
     "last_notified_at": null
@@ -42,7 +45,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 674.0,
-    "last_seen_at": "2026-10-05T23:24:02.383381+00:00",
+    "last_seen_at": "2026-10-06T03:27:16.833796+00:00",
     "name": "Trace, 甘氨酸鎂粉，葡萄味，6.35 盎司（180 克）",
     "url": "https://iherb.co/cWt7YSm?utm_medium=appshare"
   },
@@ -79,7 +82,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 2605.0,
-    "last_seen_at": "2026-10-05T23:24:02.383381+00:00",
+    "last_seen_at": "2026-10-06T03:27:16.833796+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
@@ -111,7 +114,7 @@
     "last_notified_price": null,
     "last_original_price": null,
     "last_price": 1136.0,
-    "last_seen_at": "2026-10-05T23:24:02.383381+00:00",
+    "last_seen_at": "2026-10-06T03:27:16.833796+00:00",
     "name": "Force Factor, Ultimate Magtein®，L-蘇氨酸鎂，混合漿果味，60 片軟咀嚼片",
     "url": "https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare"
   },
@@ -182,7 +185,7 @@
     "last_notified_price": 2299.0,
     "last_original_price": 3332.0,
     "last_price": 2299.0,
-    "last_seen_at": "2026-10-05T23:24:02.383381+00:00",
+    "last_seen_at": "2026-10-06T03:27:16.833796+00:00",
     "name": "【FOREO】LUNA mini 3 輕便型潔面儀(洗臉機 美國原廠公司貨 兩年保固)",
     "url": "https://www.momoshop.com.tw/product/12669677?simOrderYn=0"
   },
