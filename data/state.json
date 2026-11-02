@@ -1,21 +1,21 @@
 {
   "_weekly_digest": {
-    "last_sent_at": "2026-10-26T01:57:31.029261+00:00"
+    "last_sent_at": "2026-11-02T02:57:21.301604+00:00"
   },
   "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
-    "count": 1,
+    "count": 2,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
-    "count": 2,
-    "last_notified_at": null
+    "count": 3,
+    "last_notified_at": "2026-11-02T02:53:56.261686+00:00"
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
-    "count": 1,
+    "count": 2,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
-    "count": 2,
+    "count": 0,
     "last_notified_at": null
   },
   "iherb:141329": {
@@ -243,7 +243,7 @@
     "last_notified_price": 66.26,
     "last_original_price": null,
     "last_price": 66.26,
-    "last_seen_at": "2026-11-01T02:45:49.457559+00:00",
+    "last_seen_at": "2026-11-02T02:53:56.261686+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
@@ -486,7 +486,7 @@
     "last_notified_price": 2299.0,
     "last_original_price": 7190.0,
     "last_price": 2299.0,
-    "last_seen_at": "2026-11-01T21:25:05.513241+00:00",
+    "last_seen_at": "2026-11-02T02:53:56.261686+00:00",
     "name": "【FOREO】LUNA mini 3 輕便型潔面儀(洗臉機 美國原廠公司貨 兩年保固)",
     "url": "https://www.momoshop.com.tw/product/12669677?simOrderYn=0"
   },
