@@ -3,20 +3,20 @@
     "last_sent_at": "2026-11-02T02:57:21.301604+00:00"
   },
   "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
-    "count": 1,
+    "count": 0,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
-    "count": 3,
-    "last_notified_at": "2026-11-04T22:56:40.703769+00:00"
+    "count": 0,
+    "last_notified_at": null
   },
   "iherb:141329": {
     "currency": "TWD",
@@ -146,7 +146,7 @@
     "url": "https://iherb.co/cWt7YSm?utm_medium=appshare"
   },
   "iherb:14702": {
-    "currency": "TWD",
+    "currency": "USD",
     "history": [
       {
         "date": "2026-09-15T14:23:03.881343+00:00",
@@ -267,13 +267,18 @@
         "date": "2026-11-03T13:04:45.308080+00:00",
         "original_price": null,
         "price": 2637.0
+      },
+      {
+        "date": "2026-11-05T03:51:45.719221+00:00",
+        "original_price": null,
+        "price": 66.26
       }
     ],
-    "last_notified_at": "2026-10-29T03:01:58.992488+00:00",
+    "last_notified_at": "2026-11-05T03:51:45.719221+00:00",
     "last_notified_price": 66.26,
     "last_original_price": null,
-    "last_price": 2637.0,
-    "last_seen_at": "2026-11-03T22:37:29.896569+00:00",
+    "last_price": 66.26,
+    "last_seen_at": "2026-11-05T03:51:45.719221+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
@@ -502,7 +507,7 @@
     "last_notified_price": 70.51,
     "last_original_price": null,
     "last_price": 70.51,
-    "last_seen_at": "2026-11-04T13:21:10.260723+00:00",
+    "last_seen_at": "2026-11-05T03:51:45.719221+00:00",
     "name": "挪帝克, Ultimate Omega® Xtra 高級魚油，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare"
   },
@@ -541,7 +546,7 @@
     "last_notified_price": 2299.0,
     "last_original_price": 7190.0,
     "last_price": 2299.0,
-    "last_seen_at": "2026-11-04T22:56:40.703769+00:00",
+    "last_seen_at": "2026-11-05T03:51:45.719221+00:00",
     "name": "【FOREO】LUNA mini 3 輕便型潔面儀(洗臉機 美國原廠公司貨 兩年保固)",
     "url": "https://www.momoshop.com.tw/product/12669677?simOrderYn=0"
   },
