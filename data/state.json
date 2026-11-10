@@ -3,23 +3,23 @@
     "last_sent_at": "2026-11-09T03:13:43.043105+00:00"
   },
   "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
-    "count": 1,
+    "count": 2,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
-    "count": 1,
+    "count": 2,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
-    "count": 2,
+    "count": 0,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
-    "count": 2,
+    "count": 0,
     "last_notified_at": null
   },
   "failtrack:momo:https://www.momoshop.com.tw/product/12669677?simOrderYn=0": {
-    "count": 8,
+    "count": 9,
     "last_notified_at": "2026-11-08T02:51:44.343312+00:00"
   },
   "iherb:141329": {
@@ -287,7 +287,7 @@
     "last_notified_price": 66.26,
     "last_original_price": null,
     "last_price": 66.26,
-    "last_seen_at": "2026-11-09T03:10:47.570799+00:00",
+    "last_seen_at": "2026-11-10T13:51:37.822014+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
@@ -389,7 +389,7 @@
     "last_notified_price": 29.99,
     "last_original_price": null,
     "last_price": 29.99,
-    "last_seen_at": "2026-11-09T03:10:47.570799+00:00",
+    "last_seen_at": "2026-11-10T13:51:37.822014+00:00",
     "name": "Force Factor, Ultimate Magtein®，L-蘇氨酸鎂，混合漿果味，60 片軟咀嚼片",
     "url": "https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare"
   },
