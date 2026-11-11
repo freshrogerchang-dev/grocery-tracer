@@ -3,23 +3,23 @@
     "last_sent_at": "2026-11-09T03:13:43.043105+00:00"
   },
   "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
-    "count": 1,
+    "count": 2,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
-    "count": 1,
+    "count": 0,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
-    "count": 1,
+    "count": 0,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
-    "count": 1,
+    "count": 0,
     "last_notified_at": null
   },
   "failtrack:momo:https://www.momoshop.com.tw/product/12669677?simOrderYn=0": {
-    "count": 12,
+    "count": 13,
     "last_notified_at": "2026-11-11T03:18:53.452115+00:00"
   },
   "iherb:141329": {
@@ -150,7 +150,7 @@
     "last_notified_price": 20.99,
     "last_original_price": null,
     "last_price": 20.99,
-    "last_seen_at": "2026-11-11T03:18:53.452115+00:00",
+    "last_seen_at": "2026-11-11T23:45:17.706195+00:00",
     "name": "Trace, 甘氨酸鎂粉，葡萄味，6.35 盎司（180 克）",
     "url": "https://iherb.co/cWt7YSm?utm_medium=appshare"
   },
@@ -287,7 +287,7 @@
     "last_notified_price": 66.26,
     "last_original_price": null,
     "last_price": 66.26,
-    "last_seen_at": "2026-11-11T03:18:53.452115+00:00",
+    "last_seen_at": "2026-11-11T23:45:17.706195+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
@@ -389,7 +389,7 @@
     "last_notified_price": 29.99,
     "last_original_price": null,
     "last_price": 29.99,
-    "last_seen_at": "2026-11-11T03:18:53.452115+00:00",
+    "last_seen_at": "2026-11-11T23:45:17.706195+00:00",
     "name": "Force Factor, Ultimate Magtein®，L-蘇氨酸鎂，混合漿果味，60 片軟咀嚼片",
     "url": "https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare"
   },
