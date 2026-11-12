@@ -3,7 +3,7 @@
     "last_sent_at": "2026-11-09T03:13:43.043105+00:00"
   },
   "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
@@ -11,7 +11,7 @@
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
@@ -19,11 +19,11 @@
     "last_notified_at": null
   },
   "failtrack:momo:https://www.momoshop.com.tw/product/12669677?simOrderYn=0": {
-    "count": 14,
+    "count": 15,
     "last_notified_at": "2026-11-11T03:18:53.452115+00:00"
   },
   "iherb:141329": {
-    "currency": "TWD",
+    "currency": "USD",
     "history": [
       {
         "date": "2026-09-15T14:23:03.881343+00:00",
@@ -149,18 +149,23 @@
         "date": "2026-11-12T04:30:08.819968+00:00",
         "original_price": null,
         "price": 693.0
+      },
+      {
+        "date": "2026-11-12T14:04:01.520860+00:00",
+        "original_price": null,
+        "price": 20.99
       }
     ],
-    "last_notified_at": "2026-11-05T13:34:13.827878+00:00",
+    "last_notified_at": "2026-11-12T14:04:01.520860+00:00",
     "last_notified_price": 20.99,
     "last_original_price": null,
-    "last_price": 693.0,
-    "last_seen_at": "2026-11-12T04:30:08.819968+00:00",
+    "last_price": 20.99,
+    "last_seen_at": "2026-11-12T14:04:01.520860+00:00",
     "name": "Trace, 甘氨酸鎂粉，葡萄味，6.35 盎司（180 克）",
     "url": "https://iherb.co/cWt7YSm?utm_medium=appshare"
   },
   "iherb:14702": {
-    "currency": "TWD",
+    "currency": "USD",
     "history": [
       {
         "date": "2026-09-15T14:23:03.881343+00:00",
@@ -291,13 +296,18 @@
         "date": "2026-11-12T04:30:08.819968+00:00",
         "original_price": null,
         "price": 2676.0
+      },
+      {
+        "date": "2026-11-12T14:04:01.520860+00:00",
+        "original_price": null,
+        "price": 66.26
       }
     ],
-    "last_notified_at": "2026-11-05T03:51:45.719221+00:00",
+    "last_notified_at": "2026-11-12T14:04:01.520860+00:00",
     "last_notified_price": 66.26,
     "last_original_price": null,
-    "last_price": 2676.0,
-    "last_seen_at": "2026-11-12T04:30:08.819968+00:00",
+    "last_price": 66.26,
+    "last_seen_at": "2026-11-12T14:04:01.520860+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
