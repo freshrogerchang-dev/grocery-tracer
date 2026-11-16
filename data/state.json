@@ -3,7 +3,7 @@
     "last_sent_at": "2026-11-16T03:24:53.370358+00:00"
   },
   "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
@@ -11,19 +11,19 @@
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:momo:https://www.momoshop.com.tw/product/12669677?simOrderYn=0": {
-    "count": 26,
+    "count": 27,
     "last_notified_at": "2026-11-14T03:43:26.107336+00:00"
   },
   "iherb:141329": {
-    "currency": "USD",
+    "currency": "TWD",
     "history": [
       {
         "date": "2026-09-15T14:23:03.881343+00:00",
@@ -154,13 +154,18 @@
         "date": "2026-11-12T14:04:01.520860+00:00",
         "original_price": null,
         "price": 20.99
+      },
+      {
+        "date": "2026-11-16T14:04:56.888128+00:00",
+        "original_price": null,
+        "price": 693.0
       }
     ],
     "last_notified_at": "2026-11-12T14:04:01.520860+00:00",
     "last_notified_price": 20.99,
     "last_original_price": null,
-    "last_price": 20.99,
-    "last_seen_at": "2026-11-16T03:22:16.044166+00:00",
+    "last_price": 693.0,
+    "last_seen_at": "2026-11-16T14:04:56.888128+00:00",
     "name": "Trace, 甘氨酸鎂粉，葡萄味，6.35 盎司（180 克）",
     "url": "https://iherb.co/cWt7YSm?utm_medium=appshare"
   },
