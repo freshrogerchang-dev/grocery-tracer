@@ -3,11 +3,11 @@
     "last_sent_at": "2026-11-16T03:24:53.370358+00:00"
   },
   "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
-    "count": 3,
+    "count": 4,
     "last_notified_at": "2026-11-19T04:43:22.766482+00:00"
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
-    "count": 6,
+    "count": 7,
     "last_notified_at": "2026-11-18T00:09:24.102131+00:00"
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
@@ -15,11 +15,11 @@
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
-    "count": 3,
+    "count": 4,
     "last_notified_at": "2026-11-19T04:43:22.766482+00:00"
   },
   "failtrack:momo:https://www.momoshop.com.tw/product/12669677?simOrderYn=0": {
-    "count": 33,
+    "count": 34,
     "last_notified_at": "2026-11-17T14:58:38.014895+00:00"
   },
   "iherb:141329": {
@@ -327,7 +327,7 @@
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
   "iherb:148754": {
-    "currency": "TWD",
+    "currency": "USD",
     "history": [
       {
         "date": "2026-09-15T14:23:03.881343+00:00",
@@ -433,13 +433,18 @@
         "date": "2026-11-19T04:43:22.766482+00:00",
         "original_price": null,
         "price": 1180.0
+      },
+      {
+        "date": "2026-11-19T14:45:47.483109+00:00",
+        "original_price": null,
+        "price": 29.99
       }
     ],
     "last_notified_at": "2026-11-16T03:22:16.044166+00:00",
     "last_notified_price": 29.99,
     "last_original_price": null,
-    "last_price": 1180.0,
-    "last_seen_at": "2026-11-19T04:43:22.766482+00:00",
+    "last_price": 29.99,
+    "last_seen_at": "2026-11-19T14:45:47.483109+00:00",
     "name": "Force Factor, Ultimate Magtein®，L-蘇氨酸鎂，混合漿果味，60 片軟咀嚼片",
     "url": "https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare"
   },
