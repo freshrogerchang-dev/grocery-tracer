@@ -7,8 +7,8 @@
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
-    "count": 2,
-    "last_notified_at": null
+    "count": 3,
+    "last_notified_at": "2026-11-21T22:29:34.436322+00:00"
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
     "count": 0,
@@ -19,7 +19,7 @@
     "last_notified_at": null
   },
   "failtrack:momo:https://www.momoshop.com.tw/product/12669677?simOrderYn=0": {
-    "count": 40,
+    "count": 41,
     "last_notified_at": "2026-11-20T23:26:03.325973+00:00"
   },
   "iherb:141329": {
@@ -331,13 +331,18 @@
         "date": "2026-11-20T23:26:03.325973+00:00",
         "original_price": null,
         "price": 66.26
+      },
+      {
+        "date": "2026-11-21T22:29:34.436322+00:00",
+        "original_price": 66.26,
+        "price": 46.38
       }
     ],
     "last_notified_at": "2026-11-19T23:57:00.430648+00:00",
     "last_notified_price": 46.38,
-    "last_original_price": null,
-    "last_price": 66.26,
-    "last_seen_at": "2026-11-21T13:46:14.772019+00:00",
+    "last_original_price": 66.26,
+    "last_price": 46.38,
+    "last_seen_at": "2026-11-21T22:29:34.436322+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
@@ -459,7 +464,7 @@
     "last_notified_price": 29.99,
     "last_original_price": null,
     "last_price": 29.99,
-    "last_seen_at": "2026-11-21T13:46:14.772019+00:00",
+    "last_seen_at": "2026-11-21T22:29:34.436322+00:00",
     "name": "Force Factor, Ultimate Magtein®，L-蘇氨酸鎂，混合漿果味，60 片軟咀嚼片",
     "url": "https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare"
   },
@@ -625,13 +630,18 @@
         "date": "2026-11-20T23:26:03.325973+00:00",
         "original_price": null,
         "price": 70.51
+      },
+      {
+        "date": "2026-11-21T22:29:34.436322+00:00",
+        "original_price": 70.51,
+        "price": 49.36
       }
     ],
     "last_notified_at": "2026-11-20T04:53:13.686604+00:00",
     "last_notified_price": 49.36,
-    "last_original_price": null,
-    "last_price": 70.51,
-    "last_seen_at": "2026-11-21T13:46:14.772019+00:00",
+    "last_original_price": 70.51,
+    "last_price": 49.36,
+    "last_seen_at": "2026-11-21T22:29:34.436322+00:00",
     "name": "挪帝克, Ultimate Omega® Xtra 高級魚油，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare"
   },
