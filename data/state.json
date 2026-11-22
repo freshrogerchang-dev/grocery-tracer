@@ -3,15 +3,15 @@
     "last_sent_at": "2026-11-16T03:24:53.370358+00:00"
   },
   "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
@@ -19,7 +19,7 @@
     "last_notified_at": null
   },
   "failtrack:momo:https://www.momoshop.com.tw/product/12669677?simOrderYn=0": {
-    "count": 42,
+    "count": 43,
     "last_notified_at": "2026-11-20T23:26:03.325973+00:00"
   },
   "iherb:141329": {
@@ -347,7 +347,7 @@
     "last_notified_price": 46.38,
     "last_original_price": null,
     "last_price": 2705.0,
-    "last_seen_at": "2026-11-22T03:39:41.641789+00:00",
+    "last_seen_at": "2026-11-22T13:40:33.084479+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
