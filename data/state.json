@@ -7,11 +7,11 @@
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
-    "count": 1,
+    "count": 2,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
@@ -19,7 +19,7 @@
     "last_notified_at": null
   },
   "failtrack:momo:https://www.momoshop.com.tw/product/12669677?simOrderYn=0": {
-    "count": 51,
+    "count": 52,
     "last_notified_at": "2026-11-24T03:30:45.053130+00:00"
   },
   "iherb:141329": {
@@ -357,7 +357,7 @@
     "last_notified_price": 46.38,
     "last_original_price": null,
     "last_price": 66.26,
-    "last_seen_at": "2026-11-26T01:13:27.455918+00:00",
+    "last_seen_at": "2026-11-26T15:53:17.969739+00:00",
     "name": "挪帝克, Ultimate Omega®，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare"
   },
@@ -681,7 +681,7 @@
     "last_notified_price": 49.36,
     "last_original_price": null,
     "last_price": 70.51,
-    "last_seen_at": "2026-11-26T01:13:27.455918+00:00",
+    "last_seen_at": "2026-11-26T15:53:17.969739+00:00",
     "name": "挪帝克, Ultimate Omega® Xtra 高級魚油，檸檬味，8 液量盎司（237 毫升）",
     "url": "https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare"
   },
