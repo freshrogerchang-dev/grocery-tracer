@@ -38,6 +38,39 @@ SEARCH_URL = "https://tw.iherb.com/search?kw={kw}"
 # iHerb happily serves the .com/USD experience even for a tw.iherb.com link.
 PRODUCT_ID_RE = re.compile(r"/pr/[^/]+/(\d+)")
 
+# Fallback patterns for pages that don't expose a /pr/ URL directly, e.g.
+# the interstitial that iHerb's app-share short links (iherb.co/xxxx) land
+# on before a JavaScript redirect, or deep links like ``?pid=12345``.
+PRODUCT_ID_FALLBACK_RES = [
+    re.compile(r"iherb\.com/pr/[^\"'\s/]+/(\d+)"),
+    re.compile(r"[?&](?:pid|productId)=(\d+)", re.IGNORECASE),
+    re.compile(r"iherb://[^\"'\s]*?(?:product|pr)[/=](\d+)", re.IGNORECASE),
+]
+
+
+def _is_short_link(url: str) -> bool:
+    return bool(re.match(r"https?://(www\.)?iherb\.co/", url))
+
+
+def _find_product_id(page) -> str | None:
+    """Find the iHerb product id from the current URL or page HTML."""
+    match = PRODUCT_ID_RE.search(page.url)
+    if match:
+        return match.group(1)
+    for regex in PRODUCT_ID_FALLBACK_RES:
+        match = regex.search(page.url)
+        if match:
+            return match.group(1)
+    try:
+        html = page.content()
+    except Exception:
+        return None
+    for regex in PRODUCT_ID_FALLBACK_RES:
+        match = regex.search(html)
+        if match:
+            return match.group(1)
+    return None
+
 
 def _new_page(browser):
     context = browser.new_context(user_agent=DEFAULT_USER_AGENT, locale="zh-TW")
@@ -58,10 +91,19 @@ def _get_soup(url: str, *, wait_selector: str = 'script[type="application/ld+jso
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
-            if "tw.iherb.com" not in page.url:
-                match = PRODUCT_ID_RE.search(page.url)
-                if match:
-                    tw_url = f"https://tw.iherb.com/pr/x/{match.group(1)}"
+            if _is_short_link(url):
+                # App-share short links (iherb.co/xxxx) often redirect via
+                # JavaScript after an interstitial, so domcontentloaded fires
+                # while we're still on iherb.co. Wait for the real product URL.
+                try:
+                    page.wait_for_url(re.compile(r"/pr/[^/]+/\d+"), timeout=20000)
+                except Exception:
+                    pass  # fall through to scanning the HTML for a product id
+
+            if "tw.iherb.com" not in page.url or "/pr/" not in page.url:
+                product_id = _find_product_id(page) if wait_for_promo else None
+                if product_id:
+                    tw_url = f"https://tw.iherb.com/pr/x/{product_id}"
                     page.goto(tw_url, wait_until="domcontentloaded", timeout=30000)
 
             # script tags are never "visible", so wait for them to be attached instead
