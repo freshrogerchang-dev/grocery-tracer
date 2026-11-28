@@ -3,23 +3,23 @@
     "last_sent_at": "2026-11-23T04:17:53.940225+00:00"
   },
   "failtrack:iherb:https://iherb.co/GC15xmUh?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/cWt7YSm?utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:iherb:https://iherb.co/eY8Kugq3?rcode=RIS7436&utm_medium=appshare": {
-    "count": 4,
+    "count": 5,
     "last_notified_at": "2026-11-27T01:11:52.565802+00:00"
   },
   "failtrack:iherb:https://iherb.co/tEcntWXT?rcode=RIS7436&utm_medium=appshare": {
-    "count": 0,
+    "count": 1,
     "last_notified_at": null
   },
   "failtrack:momo:https://www.momoshop.com.tw/product/12669677?simOrderYn=0": {
-    "count": 54,
+    "count": 55,
     "last_notified_at": "2026-11-27T15:41:38.254687+00:00"
   },
   "iherb:141329": {
